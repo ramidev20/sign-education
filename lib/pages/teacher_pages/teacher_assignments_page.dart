@@ -62,9 +62,6 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
                   ).colorScheme.primary.withOpacity(0.05),
                   child: const TabBar(
                     dividerColor: Colors.transparent,
-                    indicatorColor: AppTheme.brand,
-                    labelColor: AppTheme.brand,
-                    unselectedLabelColor: Colors.grey,
                     tabs: [
                       Tab(text: 'إدارة الواجبات'),
                       Tab(text: 'التسليمات'),
@@ -90,6 +87,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
                 return tabController.index == 0
                     ? FloatingActionButton(
                         backgroundColor: AppTheme.brand,
+                        foregroundColor: Colors.white,
                         onPressed: () async {
                           final added = await Navigator.push(
                             context,
@@ -115,8 +113,6 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     padding: const EdgeInsets.all(16),
     children: currentAssignments.map((a) {
       return Card(
-        elevation: 3,
-        shape: RoundedRectangleBorder(borderRadius: AppTheme.globalRadius),
         child: ListTile(
           contentPadding: const EdgeInsets.all(16),
           title: Text(a.title ?? ''),
@@ -148,8 +144,6 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     padding: const EdgeInsets.all(16),
     children: currentAssignments.map((assignment) {
       return Card(
-        shape: RoundedRectangleBorder(borderRadius: AppTheme.globalRadius),
-        elevation: 3,
         child: ListTile(
           title: Text(assignment.title ?? ''),
           subtitle: Text("عدد التسليمات: ${assignment.submissionsCount ?? 0}"),
@@ -173,8 +167,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     padding: const EdgeInsets.all(16),
     children: archivedAssignments.map((a) {
       return Card(
-        color: Colors.grey[200],
-        shape: RoundedRectangleBorder(borderRadius: AppTheme.globalRadius),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: ListTile(
           contentPadding: const EdgeInsets.all(16),
           title: Text(a.title ?? ''),

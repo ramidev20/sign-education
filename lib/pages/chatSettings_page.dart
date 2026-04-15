@@ -79,6 +79,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
             ),
             child: const Text("إضافة"),
           ),
@@ -134,6 +135,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text("إزالة"),
@@ -175,6 +177,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.secondary,
+              foregroundColor: Theme.of(context).colorScheme.onSecondary,
             ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text("مسح"),
@@ -218,6 +221,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text("حذف"),
@@ -236,7 +240,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: theme.colorScheme.primary,
         title: Text(

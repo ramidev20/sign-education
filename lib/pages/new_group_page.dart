@@ -95,7 +95,6 @@ class _NewGroupPageState extends State<NewGroupPage> {
                 controller: nameCtrl,
                 decoration: const InputDecoration(
                   labelText: "اسم المجموعة",
-                  border: OutlineInputBorder(),
                 ),
                 validator: (v) =>
                     v == null || v.isEmpty ? "أدخل اسم المجموعة" : null,
@@ -110,7 +109,6 @@ class _NewGroupPageState extends State<NewGroupPage> {
                       controller: levelCtrl,
                       decoration: const InputDecoration(
                         labelText: "المستوى",
-                        border: OutlineInputBorder(),
                       ),
                       validator: (v) =>
                           v == null || v.isEmpty ? "أدخل المستوى" : null,
@@ -122,7 +120,6 @@ class _NewGroupPageState extends State<NewGroupPage> {
                       controller: branchCtrl,
                       decoration: const InputDecoration(
                         labelText: "الشعبة",
-                        border: OutlineInputBorder(),
                       ),
                       validator: (v) =>
                           v == null || v.isEmpty ? "أدخل الشعبة" : null,
@@ -137,7 +134,6 @@ class _NewGroupPageState extends State<NewGroupPage> {
                 value: _selectedSubject,
                 decoration: const InputDecoration(
                   labelText: "المادة",
-                  border: OutlineInputBorder(),
                 ),
                 items: _subjects
                     .map((s) => DropdownMenuItem(value: s, child: Text(s)))

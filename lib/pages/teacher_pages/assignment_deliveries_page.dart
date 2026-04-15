@@ -51,7 +51,6 @@ class _AssignmentDeliveriesPageState extends State<AssignmentDeliveriesPage> {
               controller: controller,
               decoration: const InputDecoration(
                 hintText: "مثلاً: الملف غير مكتمل أو الحل غير صحيح",
-                border: OutlineInputBorder(),
               ),
               maxLines: 3,
             ),
@@ -99,10 +98,6 @@ class _AssignmentDeliveriesPageState extends State<AssignmentDeliveriesPage> {
               itemBuilder: (context, index) {
                 final d = deliveries[index];
                 return Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppTheme.globalRadius,
-                  ),
-                  elevation: 3,
                   margin: const EdgeInsets.all(12),
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(
@@ -123,17 +118,23 @@ class _AssignmentDeliveriesPageState extends State<AssignmentDeliveriesPage> {
                         if (d.status == 'approved')
                           Text(
                             "✅ تم القبول",
-                            style: const TextStyle(color: Colors.green),
+                            style: TextStyle(color: AppTheme.success),
                           ),
                         if (d.status == 'rejected') ...[
                           Text(
                             "❌ تم الرفض",
-                            style: const TextStyle(color: Colors.red),
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
                           ),
                           if (d.statusComment.isNotEmpty)
                             Text(
                               "السبب: ${d.statusComment}",
-                              style: const TextStyle(color: Colors.grey),
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
                             ),
                         ],
                       ],

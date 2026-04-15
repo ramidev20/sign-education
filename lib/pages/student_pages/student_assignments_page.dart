@@ -218,9 +218,6 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
               color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
               child: TabBar(
                 dividerColor: Colors.transparent,
-                indicatorColor: AppTheme.brand,
-                labelColor: AppTheme.brand,
-                unselectedLabelColor: Colors.grey,
                 tabs: [
                   Tab(
                     child: badges.Badge(
@@ -291,9 +288,7 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
           final fileUrl = assignment.fileUrl;
 
           return Card(
-            shape: RoundedRectangleBorder(borderRadius: AppTheme.globalRadius),
             margin: const EdgeInsets.only(bottom: 12),
-            elevation: 3,
             child: ListTile(
               leading: const Icon(Icons.assignment_turned_in_outlined),
               title: Text(title),
@@ -348,17 +343,17 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
 
           switch (delivery.status) {
             case 'approved':
-              statusColor = Colors.green;
+              statusColor = AppTheme.success;
               statusText = 'تمت الموافقة على التسليم';
               statusIcon = Icons.check_circle;
               break;
             case 'rejected':
-              statusColor = Colors.red;
+              statusColor = Theme.of(context).colorScheme.error;
               statusText = 'تم رفض التسليم';
               statusIcon = Icons.cancel;
               break;
             default:
-              statusColor = Colors.orange;
+              statusColor = AppTheme.warning;
               statusText = 'في انتظار المراجعة';
               statusIcon = Icons.hourglass_empty;
           }
@@ -366,9 +361,7 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
           final title = assignment.title ?? 'واجب';
 
           return Card(
-            shape: RoundedRectangleBorder(borderRadius: AppTheme.globalRadius),
             margin: const EdgeInsets.only(bottom: 16),
-            elevation: 4,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -415,7 +408,10 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                   const SizedBox(height: 8),
                   Text(
                     "تم التسليم في: ${delivery.deliveryDate.toString().substring(0, 16)}",
-                    style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
                   ),
                   if (delivery.status == 'rejected' &&
                       delivery.statusComment.isNotEmpty) ...[
@@ -423,21 +419,32 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                     Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.05),
+                        color: Theme.of(context).colorScheme.errorContainer,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                        border: Border.all(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .error
+                              .withValues(alpha: 0.25),
+                        ),
                       ),
                       padding: const EdgeInsets.all(12),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.comment, color: Colors.red, size: 20),
+                          Icon(
+                            Icons.comment,
+                            color: Theme.of(context).colorScheme.error,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               "ملاحظة المعلم: ${delivery.statusComment}",
-                              style: const TextStyle(
-                                color: Colors.red,
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onErrorContainer,
                                 fontSize: 14,
                                 height: 1.4,
                               ),

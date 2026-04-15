@@ -235,6 +235,9 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.group.name),
@@ -280,6 +283,8 @@ class _ChatPageState extends State<ChatPage> {
         currentUserId: widget.user.id,
         onMessageSend: _handleSendMessage,
         resolveUser: _resolveUser,
+        theme: chat_core.ChatTheme.fromThemeData(theme),
+        backgroundColor: theme.scaffoldBackgroundColor,
 
         onMessageLongPress: onMessageLongPress,
 
@@ -332,9 +337,7 @@ class _ChatPageState extends State<ChatPage> {
                                         style: TextStyle(
                                           fontSize: 12, // Slightly larger font
                                           fontWeight: FontWeight.bold,
-                                          color: Colors
-                                              .grey
-                                              .shade200, // Darker color for better visibility
+                                          color: cs.onSurfaceVariant,
                                         ),
                                       ),
                                     ),

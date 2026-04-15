@@ -4,7 +4,6 @@ import 'package:sign_education/pages/assignments_page.dart';
 import 'package:sign_education/pages/dictionary_page.dart';
 import 'package:sign_education/pages/groups_page.dart';
 import 'package:sign_education/pages/lessons_page.dart';
-import 'package:sign_education/pages/about_page.dart';
 import 'package:sign_education/pages/profile_page.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
@@ -16,20 +15,39 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
+class _HomeSlide {
+  final String image;
+  final VoidCallback onTap;
+
+  const _HomeSlide({required this.image, required this.onTap});
+}
+
 class _HomePageState extends State<HomePage> {
   final TextEditingController searchController = TextEditingController();
   final PageController _controller = PageController(viewportFraction: 0.85);
 
-  final List<String> backgroundImages = [
-    'assets/images/home_1.jpg',
-    'assets/images/home_1.jpg',
-    'assets/images/home_1.jpg',
-  ];
-
-  final List<String> _cardContents = [
-    'معلومات عنا',
-    'الدليل المؤسسي',
-    'الخطط والأسعار',
+  List<_HomeSlide> get slides => [
+    _HomeSlide(
+      image: 'assets/images/slides/slide_1.jpg',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => LessonsPage(user: widget.user)),
+      ),
+    ),
+    _HomeSlide(
+      image: 'assets/images/slides/slide_2.jpg',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => AssignmentsPage(user: widget.user)),
+      ),
+    ),
+    _HomeSlide(
+      image: 'assets/images/slides/slide_3.jpg',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => GroupsPage(user: widget.user)),
+      ),
+    ),
   ];
 
   List<Map<String, dynamic>> get learningTypes => [
@@ -82,10 +100,9 @@ class _HomePageState extends State<HomePage> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        elevation: 1,
         titleSpacing: 0,
         automaticallyImplyLeading: false,
         title: Row(
@@ -189,7 +206,7 @@ class _HomePageState extends State<HomePage> {
                     height: 200,
                     child: PageView.builder(
                       controller: _controller,
-                      itemCount: _cardContents.length,
+                      itemCount: slides.length,
                       itemBuilder: (context, index) {
                         return AnimatedBuilder(
                           animation: _controller,
@@ -202,54 +219,12 @@ class _HomePageState extends State<HomePage> {
                             return Transform.scale(scale: value, child: child);
                           },
                           child: Card(
-                            color: theme.colorScheme.surface,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            elevation: 5,
                             clipBehavior: Clip.antiAlias,
                             child: InkWell(
-                              onTap: () {
-                                Widget targetPage;
-                                switch (index) {
-                                  case 0:
-                                    targetPage = const AboutUsPage();
-                                    break;
-                                  case 1:
-                                    targetPage = DictionaryPage(
-                                      user: widget.user,
-                                    );
-                                    break;
-                                  default:
-                                    targetPage = const AboutUsPage();
-                                }
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => targetPage,
-                                  ),
-                                );
-                              },
-                              child: Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  Image.asset(
-                                    backgroundImages[index],
-                                    fit: BoxFit.cover,
-                                    color: Colors.black.withOpacity(0.1),
-                                    colorBlendMode: BlendMode.lighten,
-                                  ),
-                                  Center(
-                                    child: Text(
-                                      _cardContents[index],
-                                      style: theme.textTheme.headlineSmall!
-                                          .copyWith(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                    ),
-                                  ),
-                                ],
+                              onTap: slides[index].onTap,
+                              child: Image.asset(
+                                slides[index].image,
+                                fit: BoxFit.cover,
                               ),
                             ),
                           ),
@@ -262,16 +237,14 @@ class _HomePageState extends State<HomePage> {
                   // Indicator
                   SmoothPageIndicator(
                     controller: _controller,
-                    count: _cardContents.length,
+                    count: slides.length,
                     effect: WormEffect(
                       dotHeight: 10,
                       dotWidth: 10,
                       activeDotColor: theme.colorScheme.primary,
-                      dotColor: theme.brightness == Brightness.dark
-                          ? Colors
-                                .grey
-                                .shade700 // subtle gray in dark mode
-                          : Colors.grey.shade400, // lighter gray in light mode
+                      dotColor: theme.colorScheme.onSurfaceVariant.withOpacity(
+                        theme.brightness == Brightness.dark ? 0.35 : 0.25,
+                      ),
                     ),
                   ),
 
@@ -316,9 +289,9 @@ class _HomePageState extends State<HomePage> {
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: isDark
-                                  ? Colors.black.withOpacity(0.3)
-                                  : Colors.grey.withOpacity(0.2),
+                              color: theme.colorScheme.shadow.withOpacity(
+                                isDark ? 0.28 : 0.10,
+                              ),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),

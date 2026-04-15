@@ -8,8 +8,6 @@ class AboutUsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('📌 من نحن – منصة الإشارة التعليمية'),
-        foregroundColor: Colors.white,
-        backgroundColor: Colors.lightBlue[900],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),

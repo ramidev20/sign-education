@@ -7,6 +7,7 @@ import 'package:sign_education/data/db/db_helper_lessons.dart';
 import 'package:sign_education/data/models/class_group_model.dart';
 import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/data/models/lesson_model.dart';
+import 'package:sign_education/utils/app_theme.dart';
 
 class LessonCreatePage extends StatefulWidget {
   final UserModel user;
@@ -66,7 +67,7 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
       if (clean.length == 6) clean = "FF$clean";
       return Color(int.parse("0x$clean"));
     } catch (_) {
-      return Colors.blueAccent;
+      return AppTheme.brand;
     }
   }
 
@@ -149,7 +150,7 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text("إضافة درس جديد"),
         centerTitle: true,
@@ -252,13 +253,13 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? color.withOpacity(0.1)
-                                  : Colors.white,
+                                  ? theme.colorScheme.primary.withOpacity(0.10)
+                                  : theme.colorScheme.surface,
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
                                 color: isSelected
-                                    ? color
-                                    : Colors.grey.shade300,
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.outlineVariant,
                                 width: 1,
                               ),
                             ),
@@ -283,8 +284,8 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
                                 ),
                                 Text(
                                   "${group.level} • ${group.subject}",
-                                  style: const TextStyle(
-                                    color: Colors.grey,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
                                     fontSize: 13,
                                   ),
                                 ),
@@ -294,15 +295,18 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
                                   children: [
                                     Text(
                                       "$memberCount طالب",
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 12,
-                                      ),
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                            fontSize: 12,
+                                          ),
                                     ),
                                     if (isSelected)
                                       Icon(
                                         Icons.check_circle,
-                                        color: color,
+                                        color: theme.colorScheme.primary,
                                         size: 20,
                                       ),
                                   ],
@@ -327,7 +331,8 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
                 ),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 55),
-                  backgroundColor: Colors.blueAccent,
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),

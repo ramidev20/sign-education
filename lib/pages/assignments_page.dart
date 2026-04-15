@@ -21,7 +21,6 @@ class AssignmentsPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('الواجبات'),
         centerTitle: true,
-        elevation: 2,
       ),
       body: isStudent
           ? StudentAssignmentsPage(user: user)

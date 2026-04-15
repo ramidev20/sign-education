@@ -182,9 +182,7 @@ class _LessonsPageState extends State<LessonsPage> {
 
           final lesson = _lessons[index];
           return Card(
-            elevation: 2,
             margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-            shape: RoundedRectangleBorder(borderRadius: AppTheme.globalRadius),
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               leading: const Icon(Icons.menu_book_outlined),
@@ -362,7 +360,6 @@ class _TeacherLessonsArchive extends StatelessWidget {
             itemBuilder: (context, index) {
               final lesson = lessons[index];
               return Card(
-                shape: RoundedRectangleBorder(borderRadius: AppTheme.globalRadius),
                 child: ListTile(
                   leading: const Icon(Icons.menu_book_outlined),
                   title: Text(lesson.title ?? 'درس'),

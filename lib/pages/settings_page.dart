@@ -4,6 +4,7 @@ import 'package:sign_education/auth.dart';
 import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/pages/login_page.dart';
 import 'package:sign_education/pages/profile_page.dart';
+import 'package:sign_education/pages/theme_preview_page.dart';
 import 'package:sign_education/utils/realtime_listener_service.dart';
 import 'package:sign_education/utils/theme_controller.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -29,6 +30,7 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeController = Provider.of<ThemeController>(context);
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(title: const Text("الإعدادات"), centerTitle: true),
@@ -36,8 +38,21 @@ class SettingsPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _buildCard(
+            icon: Icons.palette_outlined,
+            color: cs.primary,
+            title: "UI Kit Preview",
+            subtitle: "Preview cards, dialogs, fields, and controls",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ThemePreviewPage()),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          _buildCard(
             icon: Icons.person,
-            color: Colors.blue,
+            color: cs.secondary,
             title: "الملف الشخصي",
             subtitle: "تعديل معلومات الحساب",
             onTap: () async {
@@ -50,7 +65,7 @@ class SettingsPage extends StatelessWidget {
           const SizedBox(height: 12),
           _buildCard(
             icon: Icons.language,
-            color: Colors.green,
+            color: cs.tertiary,
             title: "اللغة",
             subtitle: "تغيير لغة التطبيق",
             onTap: () {},
@@ -58,7 +73,7 @@ class SettingsPage extends StatelessWidget {
           const SizedBox(height: 12),
           _buildCard(
             icon: Icons.dark_mode,
-            color: Colors.deepPurple,
+            color: cs.primary,
             title: "الوضع الليلي",
             subtitle: "تفعيل أو إلغاء الوضع الليلي",
             trailing: Switch(
@@ -71,8 +86,8 @@ class SettingsPage extends StatelessWidget {
             icon: const Icon(Icons.logout),
             onPressed: () => _logout(context),
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+              backgroundColor: cs.error,
+              foregroundColor: cs.onError,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -94,8 +109,6 @@ class SettingsPage extends StatelessWidget {
     Widget? trailing,
   }) {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
       child: ListTile(
         leading: Icon(icon, color: color),
         title: Text(title),

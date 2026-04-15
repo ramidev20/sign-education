@@ -164,9 +164,6 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
               TextFormField(
                 decoration: InputDecoration(
                   labelText: 'العنوان',
-                  border: OutlineInputBorder(
-                    borderRadius: AppTheme.globalRadius,
-                  ),
                 ),
                 onSaved: (v) => title = v ?? '',
                 validator: (v) => v!.isEmpty ? 'مطلوب' : null,
@@ -175,9 +172,6 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(
                   labelText: "المادة",
-                  border: OutlineInputBorder(
-                    borderRadius: AppTheme.globalRadius,
-                  ),
                 ),
                 items: subjectsList
                     .map(
@@ -194,9 +188,6 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
               TextFormField(
                 decoration: InputDecoration(
                   labelText: 'التعليمات',
-                  border: OutlineInputBorder(
-                    borderRadius: AppTheme.globalRadius,
-                  ),
                 ),
                 maxLines: 3,
                 onSaved: (v) => description = v ?? '',
@@ -223,7 +214,6 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: AppTheme.globalRadius,
                     ),
-                    elevation: 2,
                     child: ExpansionTile(
                       title: Text(group['name'] ?? 'مجموعة'),
                       children: [

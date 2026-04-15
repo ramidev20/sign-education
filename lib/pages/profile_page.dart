@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:sign_education/utils/app_theme.dart';
 import 'package:sign_education/data/models/user_model.dart';
+import 'package:sign_education/utils/app_theme.dart';
 
 class ProfilePage extends StatefulWidget {
   final UserModel user;
@@ -12,12 +12,12 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  late UserModel _user;
+  late UserModel user;
 
   @override
   void initState() {
     super.initState();
-    _user = widget.user;
+    user = widget.user;
   }
 
   Color _colorFromHex(String hex) {
@@ -29,200 +29,312 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final isTeacher = _user.role == "teacher";
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final isTeacher = user.role == "teacher";
+    final roleLabel = user.role == "teacher"
+        ? "معلم"
+        : user.role == "student"
+        ? "طالب"
+        : "مستخدم";
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("الملف الشخصي"),
         centerTitle: true,
-        backgroundColor: isTeacher ? AppTheme.accent : AppTheme.brand,
-        elevation: 2,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-
-            // --- Profile Avatar ---
-            Center(
-              child: Stack(
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundColor: _colorFromHex(
-                      _user.avatarColor ?? "#607D8B",
-                    ),
-                    child: Text(
-                      _user.name.isNotEmpty ? _user.name[0].toUpperCase() : "?",
-                      style: const TextStyle(
-                        fontSize: 40,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                  Hero(
+                    tag: 'userAvatar',
+                    child: CircleAvatar(
+                      radius: 38,
+                      backgroundColor: _colorFromHex(
+                        user.avatarColor ?? "#607D8B",
+                      ),
+                      child: Text(
+                        user.name.isNotEmpty ? user.name[0].toUpperCase() : "?",
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          color: cs.onPrimary,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                   ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isTeacher ? AppTheme.accent : AppTheme.brand,
-                      ),
-                      padding: const EdgeInsets.all(6),
-                      child: const Icon(
-                        Icons.edit,
-                        color: Colors.white,
-                        size: 18,
-                      ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              user.name,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w900,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            _RoleChip(label: roleLabel),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          user.email,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            _MiniStat(
+                              icon: Icons.stars_rounded,
+                              label: "النقاط",
+                              value: user.points.toString(),
+                            ),
+                            const SizedBox(width: 12),
+                            _MiniStat(
+                              icon: Icons.calendar_month_rounded,
+                              label: "منذ",
+                              value:
+                                  "${user.createdAt.year}/${user.createdAt.month.toString().padLeft(2, '0')}/${user.createdAt.day.toString().padLeft(2, '0')}",
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 12),
-            Text(
-              _user.name,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              _user.email,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
-            ),
-
-            const SizedBox(height: 24),
-
-            // --- Role-Specific Layout ---
-            if (isTeacher) _teacherLayout(context) else _studentLayout(context),
-
-            const SizedBox(height: 30),
-
-            // --- Edit Button ---
-            FilledButton.icon(
-              icon: const Icon(Icons.edit),
-              label: const Text("تعديل المعلومات"),
-              onPressed: () async {},
-              style: FilledButton.styleFrom(
-                backgroundColor: isTeacher ? AppTheme.accent : AppTheme.brand,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppTheme.globalRadius,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 🧑‍🎓 Student Layout
-  Widget _studentLayout(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: AppTheme.globalRadius),
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.school, color: AppTheme.brand),
-                const SizedBox(width: 8),
-                Text(
-                  "معلومات الطالب",
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(color: AppTheme.brand),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _infoRow("المستوى الدراسي", _user.level ?? "-", context),
-            _infoRow("الشعبة", _user.branch ?? "-", context),
-            _infoRow(
-              "تاريخ التسجيل",
-              "${_user.createdAt.year}-${_user.createdAt.month}-${_user.createdAt.day}",
-              context,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 👨‍🏫 Teacher Layout
-  Widget _teacherLayout(BuildContext context) {
-    final subjects = (_user.subjects != null && _user.subjects!.isNotEmpty)
-        ? _user.subjects!.join(", ")
-        : "-";
-
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: AppTheme.globalRadius),
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.work, color: AppTheme.accent),
-                const SizedBox(width: 8),
-                Text(
-                  "معلومات المعلم",
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(color: AppTheme.accent),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _infoRow("المواد التي يدرسها", subjects, context),
-            _infoRow(
-              "تاريخ الانضمام",
-              "${_user.createdAt.year}-${_user.createdAt.month}-${_user.createdAt.day}",
-              context,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _infoRow(String title, String value, BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
-            ),
+          const SizedBox(height: 16),
+          if (isTeacher) _TeacherSection(user: user) else _StudentSection(user: user),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            icon: const Icon(Icons.edit),
+            label: const Text("تعديل المعلومات"),
+            onPressed: () async {},
           ),
         ],
       ),
     );
   }
 }
+
+class _RoleChip extends StatelessWidget {
+  final String label;
+
+  const _RoleChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: cs.primaryContainer,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: cs.onPrimaryContainer,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _MiniStat({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest,
+          borderRadius: AppTheme.smallRadius,
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: cs.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TeacherSection extends StatelessWidget {
+  final UserModel user;
+
+  const _TeacherSection({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final subjects = (user.subjects != null && user.subjects!.isNotEmpty)
+        ? user.subjects!.join("، ")
+        : "-";
+
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: Icon(Icons.work_rounded, color: cs.primary),
+            title: Text(
+              "معلومات المعلم",
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          _InfoTile(
+            icon: Icons.menu_book_rounded,
+            title: "المواد التي يدرسها",
+            value: subjects,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StudentSection extends StatelessWidget {
+  final UserModel user;
+
+  const _StudentSection({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: Icon(Icons.school_rounded, color: cs.primary),
+            title: Text(
+              "معلومات الطالب",
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          _InfoTile(
+            icon: Icons.stacked_bar_chart_rounded,
+            title: "المستوى الدراسي",
+            value: user.level ?? "-",
+          ),
+          _InfoTile(
+            icon: Icons.account_tree_rounded,
+            title: "الشعبة",
+            value: user.branch ?? "-",
+          ),
+          _InfoTile(
+            icon: Icons.groups_2_rounded,
+            title: "المجموعة",
+            value: user.classGroup ?? "-",
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+
+  const _InfoTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return ListTile(
+      leading: Icon(icon, color: cs.onSurfaceVariant),
+      title: Text(title, style: theme.textTheme.bodyMedium),
+      trailing: SizedBox(
+        width: 170,
+        child: Text(
+          value,
+          textAlign: TextAlign.end,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: cs.onSurface,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+

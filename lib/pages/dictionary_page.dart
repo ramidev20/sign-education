@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/dictionary_data.dart';
+import 'package:sign_education/utils/app_theme.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 import 'dart:typed_data';
 import 'package:video_player/video_player.dart';
@@ -83,7 +84,6 @@ class _DictionaryPageState extends State<DictionaryPage> {
       appBar: AppBar(
         title: const Text('قاموس لغة الإشارة'),
         centerTitle: true,
-        elevation: 2,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -101,7 +101,9 @@ class _DictionaryPageState extends State<DictionaryPage> {
                       hintText: 'ابحث عن كلمة',
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
-                      fillColor: Colors.grey[200],
+                      fillColor: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 12,
@@ -137,7 +139,6 @@ class _DictionaryPageState extends State<DictionaryPage> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              elevation: 3,
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(16),
                                 onTap: () {
@@ -169,16 +170,20 @@ class _DictionaryPageState extends State<DictionaryPage> {
                                             )
                                           : Container(
                                               decoration: BoxDecoration(
-                                                color: Colors.grey[300],
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .surfaceContainerHighest,
                                                 borderRadius:
                                                     const BorderRadius.vertical(
                                                       top: Radius.circular(16),
                                                     ),
                                               ),
-                                              child: const Icon(
+                                              child: Icon(
                                                 Icons.videocam,
                                                 size: 48,
-                                                color: Colors.grey,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
                                               ),
                                             ),
                                     ),
@@ -425,7 +430,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                               _controller,
                               allowScrubbing: true,
                               colors: const VideoProgressColors(
-                                playedColor: Colors.blueAccent,
+                                playedColor: AppTheme.brand,
                                 bufferedColor: Colors.white54,
                                 backgroundColor: Colors.black26,
                               ),

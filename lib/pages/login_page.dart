@@ -136,15 +136,12 @@ class _LoginPageState extends State<LoginPage> {
       appBar: AppBar(
         title: const Text("المنصة التعليمية"),
         centerTitle: true,
-        elevation: 1,
       ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Card(
-            elevation: 4,
             margin: const EdgeInsets.symmetric(horizontal: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Form(
@@ -209,8 +206,6 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: _isLoading ? null : _loginWithGoogle,
                       label: const Text("تسجيل الدخول باستخدام Google"),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

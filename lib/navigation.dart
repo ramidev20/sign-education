@@ -70,30 +70,18 @@ class _MyHomePageState extends State<MyHomePage> {
             color: theme.colorScheme.surface,
             boxShadow: [
               BoxShadow(
-                color: isDark
-                    ? Colors.black.withValues(alpha: 0.25)
-                    : Colors.grey.withValues(alpha: 0.15),
+                color: theme.colorScheme.shadow.withValues(
+                  alpha: isDark ? 0.35 : 0.12,
+                ),
                 blurRadius: 8,
                 offset: const Offset(0, -2),
               ),
             ],
           ),
           child: BottomNavigationBar(
-            type: BottomNavigationBarType.fixed,
             backgroundColor: Colors.transparent,
-            elevation: 0,
             currentIndex: _selectedIndex,
             onTap: _onItemTapped,
-            selectedItemColor: theme.colorScheme.primary,
-            unselectedItemColor: isDark ? Colors.grey[400] : Colors.grey[600],
-            selectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.w500,
-              fontSize: 12,
-            ),
             iconSize: 28,
             items: const [
               BottomNavigationBarItem(icon: Icon(Icons.home), label: 'الرئيسية'),
