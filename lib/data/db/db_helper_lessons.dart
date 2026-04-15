@@ -1,5 +1,6 @@
 import 'package:sign_education/data/models/lesson_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 /// Handles Supabase queries related to lessons.
@@ -30,8 +31,12 @@ class DbHelperLessons {
   ) async {
     final res = await supabase
         .from('lessons')
-        .select()
-        .eq('class_group_id', classGroupId);
+        .select(
+          'lesson_id, subject, strategy_type, teacher_id, class_group_id, title, description, file_url, created_at',
+        )
+        .eq('class_group_id', classGroupId)
+        .order('created_at', ascending: false)
+        .limit(200);
 
     return (res as List).map((map) => LessonModel.fromMap(map)).toList();
   }
@@ -40,8 +45,31 @@ class DbHelperLessons {
   static Future<List<LessonModel>> getLessonsByTeacher(String teacherId) async {
     final res = await supabase
         .from('lessons')
-        .select()
-        .eq('teacher_id', teacherId);
+        .select(
+          'lesson_id, subject, strategy_type, teacher_id, class_group_id, title, description, file_url, created_at',
+        )
+        .eq('teacher_id', teacherId)
+        .order('created_at', ascending: false)
+        .limit(200);
+
+    return (res as List).map((map) => LessonModel.fromMap(map)).toList();
+  }
+
+  static Future<List<LessonModel>> getLessonsByClassGroupsPaged({
+    required List<String> classGroupIds,
+    required int offset,
+    required int limit,
+  }) async {
+    if (classGroupIds.isEmpty) return [];
+
+    final res = await supabase
+        .from('lessons')
+        .select(
+          'lesson_id, subject, strategy_type, teacher_id, class_group_id, title, description, file_url, created_at',
+        )
+        .inFilter('class_group_id', classGroupIds)
+        .order('created_at', ascending: false)
+        .range(offset, offset + limit - 1);
 
     return (res as List).map((map) => LessonModel.fromMap(map)).toList();
   }
@@ -71,15 +99,15 @@ class DbHelperLessons {
     final lesson = await getLessonById(lessonId);
     if (lesson != null && lesson.fileUrl != null) {
       final storagePath = _extractStoragePath(lesson.fileUrl!);
-      print("Deleting storage file: $storagePath");
+      debugPrint("Deleting storage file: $storagePath");
       if (storagePath != null) {
         try {
           final res = await supabase.storage.from("lessons").remove([
             storagePath,
           ]);
-          print("Delete response: $res");
+          debugPrint("Delete response: $res");
         } catch (e) {
-          print("Storage delete error: $e");
+          debugPrint("Storage delete error: $e");
         }
       }
     }
@@ -99,7 +127,7 @@ class DbHelperLessons {
       }
       return null;
     } catch (e) {
-      print("extract error: $e");
+      debugPrint("extract error: $e");
       return null;
     }
   }

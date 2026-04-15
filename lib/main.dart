@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'package:sign_education/auth.dart';
 import 'package:sign_education/pages/local_provider.dart';
@@ -49,15 +51,31 @@ Future<void> main() async {
   );
 
   // ✅ Start the app
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => LocaleProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeController()),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  void appRunner() {
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => LocaleProvider()),
+          ChangeNotifierProvider(create: (_) => ThemeController()),
+        ],
+        child: const MyApp(),
+      ),
+    );
+  }
+
+  final sentryDsn = const String.fromEnvironment('SENTRY_DSN');
+  if (sentryDsn.isNotEmpty) {
+    await SentryFlutter.init(
+      (options) {
+        options.dsn = sentryDsn;
+        options.environment = kReleaseMode ? 'production' : 'development';
+        options.tracesSampleRate = kReleaseMode ? 0.2 : 1.0;
+      },
+      appRunner: appRunner,
+    );
+  } else {
+    appRunner();
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -135,6 +153,8 @@ class _SplashScreenState extends State<SplashScreen>
 
       // ✅ Check for any new content since last app open
       await StorageService.checkForNewContent();
+
+      if (!mounted) return;
 
       Navigator.pushReplacement(
         context,

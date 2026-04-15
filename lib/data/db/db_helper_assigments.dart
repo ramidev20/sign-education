@@ -22,10 +22,13 @@ class DbHelperAssignments {
     String assignmentId,
     String studentId,
   ) async {
-    await supabase.from('assignment_shares').insert({
-      'assignment_id': assignmentId,
-      'user_id': studentId,
-    });
+    await supabase.from('assignment_shares').upsert(
+      {
+        'assignment_id': assignmentId,
+        'user_id': studentId,
+      },
+      onConflict: 'assignment_id,user_id',
+    );
   }
 
   /// Fetch a single assignment by ID.
@@ -46,8 +49,12 @@ class DbHelperAssignments {
   ) async {
     final res = await supabase
         .from('assignments')
-        .select()
-        .eq('class_group_id', classGroupId);
+        .select(
+          'assignment_id, subject, teacher_id, class_group_id, title, description, status, file_url, created_at, complete_at, submissions_count',
+        )
+        .eq('class_group_id', classGroupId)
+        .order('created_at', ascending: false)
+        .limit(200);
 
     return (res as List).map((map) => AssignmentModel.fromMap(map)).toList();
   }
@@ -58,8 +65,12 @@ class DbHelperAssignments {
   ) async {
     final res = await supabase
         .from('assignments')
-        .select()
-        .eq('teacher_id', teacherId);
+        .select(
+          'assignment_id, subject, teacher_id, class_group_id, title, description, status, file_url, created_at, complete_at, submissions_count',
+        )
+        .eq('teacher_id', teacherId)
+        .order('created_at', ascending: false)
+        .limit(200);
 
     return (res as List).map((map) => AssignmentModel.fromMap(map)).toList();
   }
@@ -117,9 +128,9 @@ class DbHelperAssignments {
       final uri = Uri.parse(publicUrl);
       final segments = uri.pathSegments;
 
-      final lessonsIndex = segments.indexOf("lessons");
-      if (lessonsIndex != -1 && lessonsIndex + 1 < segments.length) {
-        return segments.sublist(lessonsIndex + 1).join("/");
+      final assignmentsIndex = segments.indexOf("assignments");
+      if (assignmentsIndex != -1 && assignmentsIndex + 1 < segments.length) {
+        return segments.sublist(assignmentsIndex + 1).join("/");
       }
       return null;
     } catch (e) {

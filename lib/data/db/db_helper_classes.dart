@@ -1,9 +1,45 @@
 import 'package:sign_education/data/models/class_group_model.dart';
 import 'package:sign_education/data/models/user_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 class DbHelperClasses {
   static final supabase = Supabase.instance.client;
+
+  static const List<String> _usersEmbeds = [
+    'users!class_group_members_user_fk(*)',
+    'users!class_group_members_user_id_fkey(*)',
+  ];
+
+  static const List<String> _usersNameEmbeds = [
+    'users!class_group_members_user_fk(name)',
+    'users!class_group_members_user_id_fkey(name)',
+  ];
+
+  static Future<List<dynamic>> _selectMembersWithUsers({
+    required String classGroupId,
+    String? role,
+    required bool nameOnly,
+  }) async {
+    final embeds = nameOnly ? _usersNameEmbeds : _usersEmbeds;
+
+    Future<List<dynamic>> run(String embed) async {
+      var q = supabase.from('class_group_members').select(embed).eq(
+            'class_group_id',
+            classGroupId,
+          );
+      if (role != null) q = q.eq('role', role);
+      return await q;
+    }
+
+    try {
+      return await run(embeds[0]);
+    } on PostgrestException catch (e) {
+      // Ambiguous relationship or missing named relationship; try the alternative.
+      debugPrint('DbHelperClasses: embed failed (${embeds[0]}): ${e.code} ${e.message}');
+      return await run(embeds[1]);
+    }
+  }
 
   /// Create a new class/group
   static Future<void> createClassGroup({
@@ -107,10 +143,10 @@ class DbHelperClasses {
 
   /// Fetch members of a class
   static Future<List<UserModel>> getMembers(String classGroupId) async {
-    final res = await supabase
-        .from('class_group_members')
-        .select('users(*)') // we only need the joined users
-        .eq('class_group_id', classGroupId);
+    final res = await _selectMembersWithUsers(
+      classGroupId: classGroupId,
+      nameOnly: false,
+    );
 
     return res
         .map((row) {
@@ -125,11 +161,11 @@ class DbHelperClasses {
   }
 
   static Future<List<UserModel>> getStudentsByGroup(String groupId) async {
-    final res = await supabase
-        .from('class_group_members')
-        .select('users(*)')
-        .eq('class_group_id', groupId)
-        .eq('role', 'student');
+    final res = await _selectMembersWithUsers(
+      classGroupId: groupId,
+      role: 'student',
+      nameOnly: false,
+    );
 
     return (res as List).map((r) => UserModel.fromJson(r['users'])).toList();
   }
@@ -200,16 +236,16 @@ class DbHelperClasses {
         callback: (payload, [_]) async {
           // Extract the new row
           final newRow = (payload).newRecord;
-          print('New message row: $newRow');
+          debugPrint('New message row: $newRow');
           await onMessage(newRow);
         },
       );
 
       await channel.subscribe();
-      print('- Subscribed to chat: $classGroupId');
+      debugPrint('- Subscribed to chat: $classGroupId');
       return channel;
     } catch (e, st) {
-      print('- Error subscribing: $e\n$st');
+      debugPrint('- Error subscribing: $e\n$st');
       return null;
     }
   }

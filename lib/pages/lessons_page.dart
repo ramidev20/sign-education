@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_classes.dart';
 import 'package:sign_education/data/db/db_helper_lessons.dart';
 import 'package:sign_education/data/labels_data.dart';
-import 'package:sign_education/data/models/class_group_model.dart';
-import 'package:sign_education/pages/assignments_page.dart';
-import 'package:sign_education/utils/app_theme.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import 'package:sign_education/pages/lesson_create_page.dart';
-import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/data/models/lesson_model.dart';
-import 'package:sign_education/pages/strategies_page.dart'; // ✅ Make sure this import exists
+import 'package:sign_education/data/models/user_model.dart';
+import 'package:sign_education/pages/lesson_create_page.dart';
+import 'package:sign_education/pages/strategies_page.dart';
+import 'package:sign_education/utils/app_theme.dart';
+import 'package:sign_education/widgets/app_state.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 class LessonsPage extends StatefulWidget {
   final UserModel user;
@@ -20,378 +19,373 @@ class LessonsPage extends StatefulWidget {
 }
 
 class _LessonsPageState extends State<LessonsPage> {
-  Future<List<LessonModel>> _fetchTeacherLessons() async {
-    return await DbHelperLessons.getLessonsByTeacher(widget.user.id);
-  }
+  // Student pagination (all groups in one query)
+  final ScrollController _scroll = ScrollController();
+  final List<LessonModel> _lessons = [];
+  bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  int _offset = 0;
+  List<String> _groupIds = [];
+  static const int _pageSize = 25;
 
-  void _viewLessonPdf(LessonModel lesson) {
-    if (lesson.fileUrl != null && lesson.fileUrl!.isNotEmpty) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => LessonPdfPage(lesson: lesson)),
-      );
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("لا يوجد PDF لهذا الدرس")));
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+    if (widget.user.role == 'student') {
+      _initStudent();
     }
   }
 
-  void _openStrategiesPage() {
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _initStudent() async {
+    try {
+      final groups = await DbHelperClasses.getClassesByStudent(widget.user.id);
+      _groupIds = groups.map((g) => g.classGroupId).where((id) => id.isNotEmpty).toList();
+      await _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر تحميل المجموعات: $e')),
+      );
+    }
+  }
+
+  Future<void> _refresh() async {
+    _lessons.clear();
+    _offset = 0;
+    _hasMore = true;
+    setState(() => _loading = true);
+    await _loadMore();
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore || _groupIds.isEmpty) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+
+    setState(() => _loadingMore = true);
+    try {
+      final page = await DbHelperLessons.getLessonsByClassGroupsPaged(
+        classGroupIds: _groupIds,
+        offset: _offset,
+        limit: _pageSize,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _lessons.addAll(page);
+        _offset += page.length;
+        _hasMore = page.length == _pageSize;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر تحميل الدروس: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  void _viewLessonPdf(LessonModel lesson) {
+    if (lesson.fileUrl == null || lesson.fileUrl!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا يوجد ملف PDF لهذا الدرس')),
+      );
+      return;
+    }
+
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => StrategiesPage(
-          user: widget.user,
-          title: "درس جديد",
-          subject: "غير محدد",
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => LessonPdfPage(lesson: lesson)),
     );
   }
 
-  void _openLessonArchive() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(title: const Text("أرشيف الدروس")),
-          body: _lessonsArchive(),
-        ),
+  @override
+  Widget build(BuildContext context) {
+    final isTeacher = widget.user.role == 'teacher';
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('الدروس'),
+        centerTitle: true,
+        actions: [
+          if (isTeacher)
+            IconButton(
+              tooltip: 'إضافة درس',
+              icon: const Icon(Icons.add),
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => LessonCreatePage(user: widget.user)),
+                );
+                if (!mounted) return;
+                setState(() {});
+              },
+            ),
+        ],
       ),
+      body: isTeacher ? _buildTeacherView(context) : _buildStudentView(),
     );
   }
 
   Widget _buildStudentView() {
-    return FutureBuilder<List<ClassGroupModel>>(
-      future: DbHelperClasses.getClassesByStudent(widget.user.id),
-      builder: (context, classSnapshot) {
-        if (classSnapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    if (_loading) return const AppLoading();
 
-        if (classSnapshot.hasError) {
-          return Center(child: Text("حدث خطأ أثناء تحميل الأقسام"));
-        }
-
-        final classGroups = classSnapshot.data ?? [];
-        if (classGroups.isEmpty) {
-          return const Center(child: Text("أنت لست مسجلاً في أي قسم بعد"));
-        }
-
-        return FutureBuilder<List<LessonModel>>(
-          future: _fetchLessonsForStudent(classGroups),
-          builder: (context, lessonSnapshot) {
-            if (lessonSnapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (lessonSnapshot.hasError) {
-              return Center(child: Text("حدث خطأ أثناء تحميل الدروس"));
-            }
-
-            final lessons = lessonSnapshot.data ?? [];
-            if (lessons.isEmpty) {
-              return const Center(child: Text("لا توجد دروس متاحة لك حاليًا"));
-            }
-
-            return ListView.builder(
-              itemCount: lessons.length,
-              itemBuilder: (context, index) {
-                final lesson = lessons[index];
-                return Card(
-                  elevation: 2,
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppTheme.globalRadius,
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    title: Text(
-                      lesson.title!,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text("المادة: ${subjectLabels[lesson.subject]}"),
-                      ],
-                    ),
-                    onTap: () => _viewLessonPdf(lesson),
-                  ),
-                );
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-
-  /// 🔹 Helper function: Fetch all lessons for the student’s class groups
-  Future<List<LessonModel>> _fetchLessonsForStudent(
-    List<ClassGroupModel> classGroups,
-  ) async {
-    List<LessonModel> allLessons = [];
-
-    for (final group in classGroups) {
-      final groupId = group.classGroupId;
-      if (groupId.isNotEmpty) {
-        final lessons = await DbHelperLessons.getLessonsByClassGroup(groupId);
-        allLessons.addAll(lessons);
-      }
+    if (_groupIds.isEmpty) {
+      return const AppEmptyState(
+        icon: Icons.school_outlined,
+        title: 'أنت لست مسجلاً في أي قسم بعد',
+        message: 'اطلب من المعلم إضافتك إلى مجموعة.',
+      );
     }
 
-    return allLessons;
+    if (_lessons.isEmpty) {
+      return AppEmptyState(
+        icon: Icons.menu_book_outlined,
+        title: 'لا توجد دروس متاحة لك حالياً',
+        actionLabel: 'تحديث',
+        onAction: _refresh,
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView.builder(
+        controller: _scroll,
+        padding: const EdgeInsets.all(12),
+        itemCount: _lessons.length + (_hasMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index >= _lessons.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 18),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            );
+          }
+
+          final lesson = _lessons[index];
+          return Card(
+            elevation: 2,
+            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            shape: RoundedRectangleBorder(borderRadius: AppTheme.globalRadius),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              leading: const Icon(Icons.menu_book_outlined),
+              title: Text(lesson.title ?? 'درس'),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text('المادة: ${subjectLabels[lesson.subject]}'),
+              ),
+              trailing: const Icon(Icons.picture_as_pdf_outlined),
+              onTap: () => _viewLessonPdf(lesson),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildTeacherView(BuildContext context) {
     final theme = Theme.of(context);
+    final tiles = <_TeacherTile>[
+      _TeacherTile(
+        title: 'إضافة درس',
+        icon: Icons.add_circle_outline,
+        gradient: LinearGradient(colors: [theme.colorScheme.primary, theme.colorScheme.secondary]),
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => LessonCreatePage(user: widget.user)),
+          );
+          if (!mounted) return;
+          setState(() {});
+        },
+      ),
+      _TeacherTile(
+        title: 'أرشيف الدروس',
+        icon: Icons.archive_outlined,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => _TeacherLessonsArchive(user: widget.user)),
+          );
+        },
+      ),
+      _TeacherTile(
+        title: 'استراتيجيات التعلم',
+        icon: Icons.auto_awesome_outlined,
+        gradient: LinearGradient(colors: [theme.colorScheme.primary, theme.colorScheme.secondary]),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => StrategiesPage(
+                user: widget.user,
+                title: "درس جديد",
+                subject: "غير محدد",
+              ),
+            ),
+          );
+        },
+      ),
+      _TeacherTile(
+        title: 'تحديث',
+        icon: Icons.refresh,
+        onTap: () => setState(() {}),
+      ),
+    ];
+
     return Padding(
       padding: const EdgeInsets.all(20),
       child: GridView.count(
         crossAxisCount: 2,
         mainAxisSpacing: 16,
         crossAxisSpacing: 16,
-        children: [
-          // أرشيف الدروس
-          GestureDetector(
-            onTap: _openLessonArchive,
-            child: Container(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
+        children: tiles
+            .map(
+              (t) => InkWell(
                 borderRadius: AppTheme.globalRadius,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 6,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.archive_outlined,
-                      color: theme.brightness == Brightness.dark
-                          ? Colors.grey.shade200
-                          : Colors.grey.shade700,
-                      size: 48,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text("أرشيف الدروس"),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // إضافة درس
-          GestureDetector(
-            onTap: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => LessonCreatePage(user: widget.user),
-                ),
-              );
-              setState(() {}); // refresh after returning
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    theme.colorScheme.primary,
-                    theme.colorScheme.secondary,
-                  ],
-                ),
-                borderRadius: AppTheme.globalRadius,
-                boxShadow: [
-                  BoxShadow(
-                    color: theme.colorScheme.primary.withOpacity(0.35),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.add_circle_outline,
-                      size: 48,
-                      color: Colors.white,
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      "إضافة درس",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                onTap: t.onTap,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: t.gradient == null ? theme.colorScheme.surface : null,
+                    gradient: t.gradient,
+                    borderRadius: AppTheme.globalRadius,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // إستراتيجيات التعلم
-          GestureDetector(
-            onTap: _openStrategiesPage,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    theme.colorScheme.primary,
-                    theme.colorScheme.secondary,
-                  ],
-                ),
-                borderRadius: AppTheme.globalRadius,
-                boxShadow: [
-                  BoxShadow(
-                    color: theme.colorScheme.primary.withOpacity(0.35),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+                    ],
                   ),
-                ],
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.psychology, size: 48, color: Colors.white),
-                    SizedBox(height: 8),
-                    Text(
-                      "إستراتيجيات التعلم",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          t.icon,
+                          size: 48,
+                          color: t.gradient != null
+                              ? Colors.white
+                              : theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          t.title,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: t.gradient != null
+                                ? Colors.white
+                                : theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-        ],
+            )
+            .toList(),
       ),
     );
   }
+}
 
-  Widget _lessonsArchive() {
-    return FutureBuilder<List<LessonModel>>(
-      future: _fetchTeacherLessons(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
+class _TeacherTile {
+  final String title;
+  final IconData icon;
+  final LinearGradient? gradient;
+  final VoidCallback onTap;
 
-        final lessons = snapshot.data!;
-        if (lessons.isEmpty) {
-          return const Center(child: Text("لا توجد دروس بعد"));
-        }
+  _TeacherTile({
+    required this.title,
+    required this.icon,
+    this.gradient,
+    required this.onTap,
+  });
+}
 
-        return ListView.builder(
-          itemCount: lessons.length,
-          itemBuilder: (context, index) {
-            final lesson = lessons[index];
-            return Card(
-              elevation: 2,
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              shape: RoundedRectangleBorder(
-                borderRadius: AppTheme.globalRadius,
-              ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                title: Text(
-                  lesson.title ?? "بدون عنوان",
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 4),
-                    Text("المادة: ${subjectLabels[lesson.subject]}"),
-                    Text(
-                      "نوع الاستراتيجية: ${strategyTypeLabels[lesson.strategyType]}",
-                    ),
-                  ],
-                ),
-                trailing: PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert),
-                  onSelected: (value) async {
-                    if (value == 'delete') {
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('تأكيد الحذف'),
-                          content: const Text('هل أنت متأكد من حذف هذا الدرس؟'),
-                          actions: [
-                            TextButton(
-                              child: const Text('إلغاء'),
-                              onPressed: () => Navigator.pop(ctx, false),
-                            ),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.error,
-                              ),
-                              child: const Text('حذف'),
-                              onPressed: () => Navigator.pop(ctx, true),
-                            ),
-                          ],
-                        ),
-                      );
-
-                      if (confirm == true) {
-                        await DbHelperLessons.deleteLesson(lesson.lessonId!);
-                        setState(() {});
-                      }
-                    } else if (value == 'view') {
-                      _viewLessonPdf(lesson);
-                    }
-                  },
-                  itemBuilder: (BuildContext context) =>
-                      <PopupMenuEntry<String>>[
-                        const PopupMenuItem<String>(
-                          value: 'view',
-                          child: Text('عرض'),
-                        ),
-                        const PopupMenuItem<String>(
-                          value: 'delete',
-                          child: Text('حذف'),
-                        ),
-                      ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
+class _TeacherLessonsArchive extends StatelessWidget {
+  final UserModel user;
+  const _TeacherLessonsArchive({required this.user});
 
   @override
   Widget build(BuildContext context) {
-    print(widget.user.role);
     return Scaffold(
-      appBar: AppBar(title: const Text("الدروس")),
-      body: widget.user.role == 'teacher'
-          ? _buildTeacherView(context)
-          : _buildStudentView(),
+      appBar: AppBar(title: const Text('أرشيف الدروس')),
+      body: FutureBuilder<List<LessonModel>>(
+        future: DbHelperLessons.getLessonsByTeacher(user.id),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const AppLoading();
+          }
+          if (snapshot.hasError) {
+            return AppErrorState(
+              title: 'تعذر تحميل الأرشيف',
+              message: snapshot.error?.toString(),
+              actionLabel: 'إعادة المحاولة',
+              onAction: () => (context as Element).markNeedsBuild(),
+            );
+          }
+
+          final lessons = snapshot.data ?? [];
+          if (lessons.isEmpty) {
+            return const AppEmptyState(
+              icon: Icons.archive_outlined,
+              title: 'لا توجد دروس بعد',
+            );
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.all(12),
+            itemCount: lessons.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final lesson = lessons[index];
+              return Card(
+                shape: RoundedRectangleBorder(borderRadius: AppTheme.globalRadius),
+                child: ListTile(
+                  leading: const Icon(Icons.menu_book_outlined),
+                  title: Text(lesson.title ?? 'درس'),
+                  subtitle: Text('المادة: ${subjectLabels[lesson.subject]}'),
+                  trailing: const Icon(Icons.picture_as_pdf_outlined),
+                  onTap: () {
+                    if (lesson.fileUrl == null || lesson.fileUrl!.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('لا يوجد ملف PDF لهذا الدرس')),
+                      );
+                      return;
+                    }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => LessonPdfPage(lesson: lesson)),
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
@@ -403,15 +397,8 @@ class LessonPdfPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(lesson.title ?? 'عرض الدرس')),
-      body: lesson.fileUrl != null && lesson.fileUrl!.isNotEmpty
-          ? SfPdfViewer.network(lesson.fileUrl!)
-          : Center(
-              child: Text(
-                'لا يوجد ملف PDF لهذا الدرس',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-            ),
+      appBar: AppBar(title: Text(lesson.title ?? 'درس')),
+      body: SfPdfViewer.network(lesson.fileUrl!),
     );
   }
 }

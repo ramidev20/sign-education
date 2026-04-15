@@ -27,6 +27,25 @@ class DbHelperUsers {
     });
   }
 
+  static Future<void> ensureUserExistsFromAuth(User supabaseUser) async {
+    final meta = (supabaseUser.userMetadata ?? <String, dynamic>{});
+    final email = supabaseUser.email ?? '';
+    final fallbackName = email.contains('@') ? email.split('@').first : 'User';
+    final name = (meta['full_name'] ?? meta['name'] ?? fallbackName).toString();
+
+    await supabase.from('users').upsert(
+      {
+        'id': supabaseUser.id,
+        'email': email,
+        'name': name.isEmpty ? fallbackName : name,
+        'role': 'student',
+        'points': 0,
+      },
+      onConflict: 'id',
+      ignoreDuplicates: true,
+    );
+  }
+
   /// Fetch user profile by ID.
   /// Fetch user profile by ID.
   static Future<UserModel?> getUserById(String userId) async {

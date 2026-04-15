@@ -56,10 +56,13 @@ dependencies:
   html_to_pdf_plus: ^1.0.7
   badges: ^3.1.2
   flutter_local_notifications: ^19.5.0
+  shared_preferences: ^2.5.3
+  sentry_flutter: ^9.7.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^5.0.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

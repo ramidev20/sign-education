@@ -24,6 +24,12 @@ class _ChatPageState extends State<ChatPage> {
   final SupabaseClient _supabase = Supabase.instance.client;
   late final chat_core.ChatController _chatController;
   RealtimeChannel? _channel;
+  final List<chat_core.TextMessage> _messages = [];
+
+  DateTime? _oldestCreatedAt;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  static const int _pageSize = 50;
 
   late final OnMessageLongPressCallback? onMessageLongPress;
 
@@ -43,7 +49,7 @@ class _ChatPageState extends State<ChatPage> {
           LongPressStartDetails? details,
           int? index,
         }) {
-          print("Message long pressed ${message.id}");
+          debugPrint("Message long pressed ${message.id}");
           showModalBottomSheet<String>(
             context: context,
             builder: (context) {
@@ -85,6 +91,7 @@ class _ChatPageState extends State<ChatPage> {
           text: payload['text'] ?? '',
         );
 
+        _messages.add(message);
         _chatController.insertMessage(message);
       },
     );
@@ -100,20 +107,27 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _loadMessages() async {
     final response = await _supabase
         .from('messages')
-        .select()
+        .select('message_id, sender_id, created_at, text')
         .eq('class_group_id', widget.group.classGroupId)
-        .order('created_at', ascending: true);
+        .order('created_at', ascending: false)
+        .limit(_pageSize);
 
     final messages = (response as List).map((m) {
       return chat_core.TextMessage(
-        id: m['id']?.toString() ?? const Uuid().v4(),
+        id: m['message_id']?.toString() ?? const Uuid().v4(),
         authorId: m['sender_id'].toString(),
         createdAt:
             DateTime.tryParse(m['created_at'] ?? '')?.toUtc() ??
             DateTime.now().toUtc(),
         text: m['text'] ?? '',
       );
-    }).toList();
+    }).toList().reversed.toList();
+
+    _messages
+      ..clear()
+      ..addAll(messages);
+    _oldestCreatedAt = _messages.isNotEmpty ? _messages.first.createdAt : null;
+    _hasMore = (response as List).length == _pageSize;
 
     // preload all unique sender IDs in one query
     final userIds = messages.map((m) => m.authorId).toSet().toList();
@@ -131,16 +145,64 @@ class _ChatPageState extends State<ChatPage> {
     _chatController.setMessages(messages);
   }
 
-  Future<void> _handleSendMessage(String text) async {
-    _chatController.insertMessage(
-      chat_core.TextMessage(
-        id: const Uuid().v4(),
+  Future<void> _loadMoreMessages() async {
+    if (_loadingMore || !_hasMore || _oldestCreatedAt == null) return;
+    setState(() => _loadingMore = true);
 
-        authorId: widget.user.id,
-        createdAt: DateTime.now().toUtc(),
-        text: text,
-      ),
+    try {
+      final response = await _supabase
+          .from('messages')
+          .select('message_id, sender_id, created_at, text')
+          .eq('class_group_id', widget.group.classGroupId)
+          .lt('created_at', _oldestCreatedAt!.toIso8601String())
+          .order('created_at', ascending: false)
+          .limit(_pageSize);
+
+      final page = (response as List).map((m) {
+        return chat_core.TextMessage(
+          id: m['message_id']?.toString() ?? const Uuid().v4(),
+          authorId: m['sender_id'].toString(),
+          createdAt:
+              DateTime.tryParse(m['created_at'] ?? '')?.toUtc() ??
+              DateTime.now().toUtc(),
+          text: m['text'] ?? '',
+        );
+      }).toList().reversed.toList();
+
+      if (!mounted) return;
+      setState(() {
+        _messages.insertAll(0, page);
+        _oldestCreatedAt = _messages.isNotEmpty ? _messages.first.createdAt : null;
+        _hasMore = page.length == _pageSize;
+      });
+
+      _chatController.setMessages(List<chat_core.TextMessage>.from(_messages));
+
+      if (!_hasMore && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لا توجد رسائل أقدم')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر تحميل المزيد: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  Future<void> _handleSendMessage(String text) async {
+    final message = chat_core.TextMessage(
+      id: const Uuid().v4(),
+      authorId: widget.user.id,
+      createdAt: DateTime.now().toUtc(),
+      text: text,
     );
+
+    _messages.add(message);
+    _chatController.insertMessage(message);
 
     await DbHelperClasses.sendMessageToGroup(
       classGroupId: widget.group.classGroupId,
@@ -156,7 +218,7 @@ class _ChatPageState extends State<ChatPage> {
       return _userCache[id]!;
     }
 
-    print('[resolveUser] Cache miss for $id, fetching from DB...');
+    debugPrint('[resolveUser] Cache miss for $id, fetching from DB...');
 
     // Remove the "current user optimization"
     final response = await _supabase
@@ -167,7 +229,7 @@ class _ChatPageState extends State<ChatPage> {
 
     final user = chat_core.User(id: id, name: response?['name'] ?? 'User $id');
     _userCache[id] = user;
-    print('[resolveUser] Fetched user: ${user.name}');
+    debugPrint('[resolveUser] Fetched user: ${user.name}');
     return user;
   }
 
@@ -177,6 +239,17 @@ class _ChatPageState extends State<ChatPage> {
       appBar: AppBar(
         title: Text(widget.group.name),
         actions: [
+          IconButton(
+            tooltip: 'تحميل رسائل أقدم',
+            onPressed: _loadingMore ? null : _loadMoreMessages,
+            icon: _loadingMore
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.history),
+          ),
           GestureDetector(
             onTap: () {
               Navigator.push(
