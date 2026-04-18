@@ -242,37 +242,11 @@ class _InteractiveComparisonViewState extends State<InteractiveComparisonView> {
       );
     }
 
-    return Column(
-      children: [
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: _pdfFile != null
-                ? SfPdfViewer.file(_pdfFile!)
-                : const Center(child: Text('PDF not available')),
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {},
-                  child: const Text('Confirm'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: _pdfFile != null
+          ? SfPdfViewer.file(_pdfFile!)
+          : const Center(child: Text('PDF not available')),
     );
   }
 }

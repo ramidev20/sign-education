@@ -1,40 +1,32 @@
 const mindmap_prompt = """
-You are a helpful assistant that converts text into a Mind Map JSON. 
-⚠️ IMPORTANT: Return only valid JSON with no markdown, no explanations, no code fences.
-Follow exactly the format used in the sampleMindMap = 
+You are a helpful assistant that converts lesson text into a Mind Map JSON (tree).
+
+CRITICAL RULES:
+- Return ONLY valid JSON (no markdown, no explanations, no code fences).
+- Do NOT summarize aggressively. Preserve context, definitions, and key details.
+- If the input is long, split it into more nodes instead of omitting information.
+- Keep the output language the same as the input language.
+
+SCHEMA (must match exactly):
 {
-  "id": "os_classification",
-  "content": "OS Types",
+  "id": "root",
+  "content": "Main topic/title",
+  "pos": {"x": 560, "y": 400},
   "nodes": [
     {
-      "id": "by_domain",
-      "content": "By Domain",
+      "id": "uuid-or-slug",
+      "content": "Branch title",
+      "pos": {"x": 820, "y": 260},
       "nodes": [
-        {"id": "desktop", "content": "Desktop", "nodes": []},
-        {"id": "server", "content": "Server", "nodes": []},
-        {"id": "mobile", "content": "Mobile", "nodes": []},
-        {"id": "embedded", "content": "Embedded", "nodes": []},
-        {"id": "hypervisor", "content": "Hypervisor", "nodes": []}
-      ]
-    },
-    {
-      "id": "by_user",
-      "content": "By User",
-      "nodes": [
-        {"id": "single_user", "content": "Single-User", "nodes": []},
-        {"id": "multi_user", "content": "Multi-User", "nodes": []}
-      ]
-    },
-    {
-      "id": "by_license",
-      "content": "By License",
-      "nodes": [
-        {"id": "proprietary", "content": "Proprietary", "nodes": []},
-        {"id": "open_source", "content": "Open Source", "nodes": []}
+        {"id": "uuid", "content": "Sub-branch", "pos": {"x": 1040, "y": 200}, "nodes": []}
       ]
     }
   ]
-};
+}
+
+NOTES:
+- "nodes" MUST exist on every node (use [] if none).
+- "pos" is OPTIONAL but recommended for better visual editing (use numbers).
 """;
 
 const six_hat_prompt =
@@ -53,30 +45,30 @@ Where each hat contains key points about the subject and the content should be i
 """;
 
 const timeline_prompt = """
-You are a helpful assistant that converts historical text into JSON.
+You are a helpful assistant that converts lesson text into a Timeline JSON using a mind-map style tree.
 
-⚠️ IMPORTANT:
+CRITICAL RULES:
 - Return ONLY valid JSON (no markdown, no explanations, no code fences).
-- The JSON must be an object with one key: "timeLineMap".
-- The value of "timeLineMap" must be a list of objects.
-- Do NOT include trailing commas.
+- Do NOT summarize aggressively. Keep important context and details per event.
+- Keep the output language the same as the input language.
 
-Follow exactly this format:
-
+SCHEMA (must match exactly):
 {
-  "timeLineMap": [
+  "id": "root",
+  "content": "Timeline title",
+  "nodes": [
     {
-      "date": "1942/07/15",
-      "event": "event 1",
-      "type": "main"
-    },
-    {
-      "date": "1952/08/11",
-      "event": "event 2",
-      "type": "detail"
+      "id": "uuid-or-slug",
+      "date": "YYYY/MM/DD or YYYY or any parseable date string",
+      "content": "Event title/summary",
+      "nodes": []
     }
   ]
 }
+
+NOTES:
+- Include enough events to cover the lesson (prefer more events over missing information).
+- Every event node MUST have: id, date, content, nodes (nodes can be []).
 """;
 
 const hierarchical_prompt = """
@@ -99,6 +91,7 @@ Given a topic or text, convert it into a **hierarchical progression structure**,
 ✅ Example format:
 
 {
+  "title": "عنوان مختصر (اختياري)",
   "hierarchyMap": [
     {
       "level": 1,
@@ -120,7 +113,12 @@ Given a topic or text, convert it into a **hierarchical progression structure**,
 """;
 
 const comparison_prompt = """
-You are a helpful assistant that converts descriptive text into a structured JSON comparison table.
+You are a helpful assistant that converts lesson text into a structured JSON comparison table.
+
+CRITICAL RULES:
+- Return ONLY valid JSON (no markdown, no explanations, no code fences).
+- Do NOT over-summarize. Keep meaningful differences and context.
+- Keep the output language the same as the input language.
 
 ⚠️ IMPORTANT RULES:
 - Return ONLY valid JSON (no markdown, no explanations, no code fences).
@@ -159,7 +157,9 @@ You are a helpful assistant that converts educational text into JSON for the "Co
 
 ⚠️ IMPORTANT:
 - Return ONLY valid JSON (no markdown, no explanations, no code fences).
-- The JSON must be an object with one key: "conceptCards".
+- Do NOT summarize aggressively. Split into more cards instead of omitting details.
+- Keep the output language the same as the input language.
+- The JSON must be an object with two keys: "title" and "conceptCards".
 - The value of "conceptCards" must be a list of objects.
 - Each object must include:
   - "title": short title of the card
@@ -171,6 +171,7 @@ You are a helpful assistant that converts educational text into JSON for the "Co
 Follow exactly this format:
 
 {
+  "title": "عنوان مختصر (اختياري)",
   "conceptCards": [
     {
       "title": "Water Cycle",
@@ -277,6 +278,8 @@ You are a helpful assistant that converts lesson text into a JSON structure for 
 Follow exactly this format:
 
 {
+  "title": "عنوان الدرس (اختياري)",
+  "description": "وصف مختصر بدون حذف أفكار مهمة (اختياري)",
   "triangleMap": [
     {
       "corner": "المعرفة",

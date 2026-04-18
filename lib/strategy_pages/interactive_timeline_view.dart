@@ -135,8 +135,6 @@ class _TimeLineMapViewState extends State<TimeLineMapView> {
     return '$sanitizedName.pdf';
   }
 
-  void _navigateToNextScreen() {}
-
   void _retryGeneration() {
     setState(() {
       _isGenerating = true;
@@ -210,45 +208,17 @@ class _TimeLineMapViewState extends State<TimeLineMapView> {
       );
     }
 
-    return Column(
-      children: [
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: _pdfFile != null
-                ? SfPdfViewer.file(
-                    _pdfFile!,
-                    canShowScrollHead: true,
-                    canShowScrollStatus: true,
-                    pageLayoutMode: PdfPageLayoutMode.single,
-                    scrollDirection: PdfScrollDirection.horizontal,
-                  )
-                : const Center(child: Text('PDF not available')),
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('Cancel'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _navigateToNextScreen,
-                  child: const Text('Confirm'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: _pdfFile != null
+          ? SfPdfViewer.file(
+              _pdfFile!,
+              canShowScrollHead: true,
+              canShowScrollStatus: true,
+              pageLayoutMode: PdfPageLayoutMode.single,
+              scrollDirection: PdfScrollDirection.horizontal,
+            )
+          : const Center(child: Text('PDF not available')),
     );
   }
 }

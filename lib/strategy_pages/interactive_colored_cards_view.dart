@@ -126,8 +126,6 @@ class _InteractiveColoredCardsViewState
     return '$sanitized.pdf';
   }
 
-  void _navigateToNextScreen() {}
-
   void _retryGeneration() {
     setState(() {
       _isGenerating = true;
@@ -185,35 +183,9 @@ class _InteractiveColoredCardsViewState
       );
     }
 
-    return Column(
-      children: [
-        Expanded(
-          child: _pdfFile != null
-              ? SfPdfViewer.file(_pdfFile!)
-              : const Center(child: Text('PDF not ready')),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _navigateToNextScreen,
-                  child: const Text('Confirm'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+    return _pdfFile != null
+        ? SfPdfViewer.file(_pdfFile!)
+        : const Center(child: Text('PDF not ready'));
   }
 }
 

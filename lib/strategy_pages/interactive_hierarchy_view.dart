@@ -1,333 +1,282 @@
-import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
+import 'dart:math';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/models/user_model.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import 'package:path_provider/path_provider.dart';
 
-class InteractiveHierarchyView extends StatefulWidget {
+class InteractiveHierarchyView extends StatelessWidget {
   final Map<String, dynamic> hierarchyJson;
   final UserModel user;
+
   const InteractiveHierarchyView({
     super.key,
     required this.hierarchyJson,
     required this.user,
   });
 
-  @override
-  State<InteractiveHierarchyView> createState() =>
-      _InteractiveHierarchyViewState();
-}
+  List<_HierarchyLevel> _normalizeLevels() {
+    final result = <_HierarchyLevel>[];
+    final raw = hierarchyJson['hierarchyMap'];
 
-class _InteractiveHierarchyViewState extends State<InteractiveHierarchyView> {
-  bool _isGenerating = true;
-  File? _pdfFile;
-  String? _error;
-  late WebViewController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _generatePdfFromCanvas();
-  }
-
-  void _generatePdfFromCanvas() {
-    final jsonStr = jsonEncode(widget.hierarchyJson);
-    final html = _htmlTemplate.replaceFirst('{{HIERARCHY_JSON}}', jsonStr);
-
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..addJavaScriptChannel(
-        'FlutterChannel',
-        onMessageReceived: (msg) async {
-          _handleImageExport(msg.message);
-        },
-      )
-      ..addJavaScriptChannel(
-        'ErrorChannel',
-        onMessageReceived: (msg) {
-          setState(() {
-            _error = 'Export error: ${msg.message}';
-            _isGenerating = false;
-          });
-        },
-      )
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (String url) {
-            _triggerPdfGeneration();
-          },
-        ),
-      )
-      ..loadHtmlString(html);
-  }
-
-  void _triggerPdfGeneration() {
-    _controller.runJavaScript('''
-      setTimeout(() => {
-        try {
-          exportAsImage();
-        } catch (error) {
-          ErrorChannel.postMessage(error.toString());
-        }
-      }, 500);
-    ''');
-  }
-
-  Future<void> _handleImageExport(String imgBase64) async {
-    try {
-      final imageBytes = base64Decode(imgBase64.split(',').last);
-      final pdfFile = await _generatePdf(imageBytes);
-
-      setState(() {
-        _pdfFile = pdfFile;
-        _isGenerating = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = 'Failed to export PDF: $e';
-        _isGenerating = false;
-      });
+    if (raw is List) {
+      for (var i = 0; i < raw.length; i++) {
+        final item = raw[i];
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        final level = (map['level'] is num) ? (map['level'] as num).toInt() : i + 1;
+        final title = (map['title'] ?? map['content'] ?? '').toString().trim();
+        final description = (map['description'] ?? '').toString().trim();
+        if (title.isEmpty && description.isEmpty) continue;
+        result.add(
+          _HierarchyLevel(
+            level: max(1, level),
+            title: title.isEmpty ? 'المستوى ${i + 1}' : title,
+            description: description,
+          ),
+        );
+      }
     }
-  }
 
-  Future<File> _generatePdf(Uint8List imageBytes) async {
-    final pdf = pw.Document();
+    if (result.isEmpty) {
+      final rootTitle = (hierarchyJson['title'] ?? hierarchyJson['content'] ?? '')
+          .toString()
+          .trim();
+      if (rootTitle.isNotEmpty) {
+        result.add(
+          _HierarchyLevel(
+            level: 1,
+            title: rootTitle,
+            description: '',
+          ),
+        );
+      }
+    }
 
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          final image = pw.MemoryImage(imageBytes);
-          return pw.Container(
-            margin: const pw.EdgeInsets.all(20),
-            child: pw.Center(
-              child: pw.FittedBox(
-                fit: pw.BoxFit.contain,
-                child: pw.Image(image),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-
-    final dir = await getApplicationDocumentsDirectory();
-    final fileName = _getPdfFileName();
-    final file = File('${dir.path}/$fileName');
-    await file.writeAsBytes(await pdf.save());
-    return file;
-  }
-
-  String _getPdfFileName() {
-    final subjectName = widget.hierarchyJson['title'] ?? 'Hierarchy';
-    final sanitizedName = subjectName.toString().replaceAll(
-      RegExp(r'[\\/:*?"<>|]'),
-      '_',
-    );
-    return '$sanitizedName.pdf';
-  }
-
-  void _navigateToNextScreen() {}
-
-  void _retryGeneration() {
-    setState(() {
-      _isGenerating = true;
-      _error = null;
-    });
-    _triggerPdfGeneration();
+    result.sort((a, b) => a.level.compareTo(b.level));
+    return result;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Generating Hierarchical Progression PDF'),
-        actions: [
-          if (_isGenerating)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+    final levels = _normalizeLevels();
+    final title = (hierarchyJson['title'] ?? hierarchyJson['content'] ?? 'التدرج الهرمي')
+        .toString();
+    final theme = Theme.of(context);
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(title),
+          centerTitle: true,
+        ),
+        body: levels.isEmpty
+            ? Center(
+                child: Text(
+                  'لا توجد بيانات لعرض التدرج الهرمي.',
+                  style: theme.textTheme.titleMedium,
+                ),
+              )
+            : LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = max(320.0, constraints.maxWidth - 16);
+                  final height = max(560.0, levels.length * 136.0);
+
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(8, 16, 8, 20),
+                    child: Center(
+                      child: SizedBox(
+                        width: width,
+                        height: height,
+                        child: CustomPaint(
+                          painter: _PyramidPainter(
+                            levels: levels,
+                            textDirection: TextDirection.rtl,
+                            style: theme.textTheme,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-            ),
-        ],
       ),
-      body: _buildBody(),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_isGenerating) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 20),
-            Text(
-              'Generating PDF from Hierarchy...',
-              style: TextStyle(fontSize: 16),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'This may take a few seconds',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error, size: 64, color: Colors.red),
-            const SizedBox(height: 20),
-            Text(
-              _error!,
-              style: const TextStyle(fontSize: 16, color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _retryGeneration,
-              child: const Text('Retry PDF Generation'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: _pdfFile != null
-                ? SfPdfViewer.file(
-                    _pdfFile!,
-                    canShowScrollHead: true,
-                    canShowScrollStatus: true,
-                    pageLayoutMode: PdfPageLayoutMode.single,
-                    scrollDirection: PdfScrollDirection.vertical,
-                  )
-                : const Center(child: Text('PDF not available')),
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('Cancel'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _navigateToNextScreen,
-                  child: const Text('Confirm'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
 
-const String _htmlTemplate = r'''
-<!DOCTYPE html>
-<html dir="rtl">
-<head>
-<meta charset="utf-8"/>
-<title>Hierarchy Progression PDF</title>
-<style>
-  html, body {
-    margin: 0;
-    height: 100%;
-    overflow: hidden;
-    background: white;
-    font-family: "Segoe UI", Roboto, Arial, sans-serif;
-    direction: rtl;
-  }
-  #container {
-    position: relative;
-    width: 1600px;
-    height: 2000px;
-    margin: 50px auto;
-  }
-  .level-box {
-    background: #f1f5f9;
-    border-left: 6px solid #3b82f6;
-    padding: 16px 24px;
-    margin: 16px 0;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  }
-  .level-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: #1e3a8a;
-  }
-  .level-desc {
-    font-size: 16px;
-    color: #475569;
-    margin-top: 6px;
-  }
-  .level-num {
-    font-weight: bold;
-    color: #2563eb;
-  }
-</style>
-</head>
-<body>
-<div id="container"></div>
+class _PyramidPainter extends CustomPainter {
+  final List<_HierarchyLevel> levels;
+  final TextDirection textDirection;
+  final TextTheme style;
 
-<script>
-  const data = {{HIERARCHY_JSON}}.hierarchyMap || [];
-  const container = document.getElementById('container');
-
-  data.sort((a, b) => (a.level || 0) - (b.level || 0));
-
-  data.forEach(item => {
-    const box = document.createElement('div');
-    box.className = 'level-box';
-    box.innerHTML = `
-      <div class="level-title">
-        <span class="level-num">Level ${item.level}:</span> ${item.title}
-      </div>
-      <div class="level-desc">${item.description || ''}</div>
-    `;
-    container.appendChild(box);
+  _PyramidPainter({
+    required this.levels,
+    required this.textDirection,
+    required this.style,
   });
 
-  async function exportAsImage() {
-    const canvas = await html2canvas(document.body, {
-      backgroundColor: '#ffffff',
-      scale: 1.5,
-      useCORS: true,
-    });
-    FlutterChannel.postMessage(canvas.toDataURL('image/png'));
+  static const _palette = [
+    Color(0xFF5EC3F0),
+    Color(0xFF94DA6C),
+    Color(0xFFF2E293),
+    Color(0xFFF4B07B),
+    Color(0xFFF08D8D),
+    Color(0xFFBDA2F3),
+    Color(0xFF9ED2C6),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bandCount = levels.length;
+    if (bandCount == 0) return;
+
+    final baseY = size.height - 20;
+    final topY = 20.0;
+    final totalHeight = max(1.0, baseY - topY);
+    final bandHeight = totalHeight / bandCount;
+
+    final topWidth = max(120.0, size.width * 0.30);
+    final bottomWidth = size.width * 0.94;
+    final centerX = size.width / 2;
+
+    final topFirst = levels.reversed.toList();
+
+    for (var i = 0; i < bandCount; i++) {
+      final item = topFirst[i];
+      final topBoundary = i / bandCount;
+      final bottomBoundary = (i + 1) / bandCount;
+
+      final topBandWidth = ui.lerpDouble(topWidth, bottomWidth, topBoundary)!;
+      final bottomBandWidth = ui.lerpDouble(topWidth, bottomWidth, bottomBoundary)!;
+      final yTop = topY + (i * bandHeight);
+      final yBottom = yTop + bandHeight;
+
+      final path = Path()
+        ..moveTo(centerX - (topBandWidth / 2), yTop)
+        ..lineTo(centerX + (topBandWidth / 2), yTop)
+        ..lineTo(centerX + (bottomBandWidth / 2), yBottom)
+        ..lineTo(centerX - (bottomBandWidth / 2), yBottom)
+        ..close();
+
+      final fill = Paint()
+        ..style = PaintingStyle.fill
+        ..color = _palette[i % _palette.length];
+      canvas.drawPath(path, fill);
+
+      final border = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.3
+        ..color = const Color(0x55FFFFFF);
+      canvas.drawPath(path, border);
+
+      _drawBandText(
+        canvas,
+        Rect.fromLTRB(
+          centerX - (bottomBandWidth / 2) + 10,
+          yTop + 8,
+          centerX + (bottomBandWidth / 2) - 10,
+          yBottom - 8,
+        ),
+        item,
+      );
+    }
   }
 
-  window.onload = () => exportAsImage();
-</script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-</body>
-</html>
-''';
+  void _drawBandText(Canvas canvas, Rect rect, _HierarchyLevel item) {
+    final hasDesc = item.description.trim().isNotEmpty;
+    var titleSize = 22.0;
+    var descSize = 13.5;
+
+    TextPainter buildPainter({
+      required String text,
+      required double fontSize,
+      required FontWeight weight,
+      required Color color,
+      required int maxLines,
+    }) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: weight,
+            color: color,
+            height: 1.18,
+          ),
+        ),
+        textDirection: textDirection,
+        textAlign: TextAlign.center,
+        maxLines: maxLines,
+      )..layout(maxWidth: rect.width);
+      return painter;
+    }
+
+    late TextPainter levelPainter;
+    late TextPainter titlePainter;
+    late TextPainter descPainter;
+
+    for (var i = 0; i < 12; i++) {
+      levelPainter = buildPainter(
+        text: 'المستوى ${item.level}',
+        fontSize: max(9, titleSize * 0.55),
+        weight: FontWeight.w700,
+        color: const Color(0xFF4C1D95),
+        maxLines: 1,
+      );
+      titlePainter = buildPainter(
+        text: item.title,
+        fontSize: titleSize,
+        weight: FontWeight.w800,
+        color: const Color(0xFF111827),
+        maxLines: hasDesc ? 2 : 3,
+      );
+      descPainter = buildPainter(
+        text: item.description,
+        fontSize: descSize,
+        weight: FontWeight.w600,
+        color: const Color(0xCC111827),
+        maxLines: hasDesc ? 4 : 1,
+      );
+
+      final total = levelPainter.height +
+          2 +
+          titlePainter.height +
+          (hasDesc ? (4 + descPainter.height) : 0);
+      if (total <= rect.height - 6) break;
+      titleSize = max(12, titleSize - 1.2);
+      descSize = max(9, descSize - 0.9);
+    }
+
+    final totalHeight = levelPainter.height +
+        2 +
+        titlePainter.height +
+        (hasDesc ? (4 + descPainter.height) : 0);
+    var dy = rect.center.dy - (totalHeight / 2);
+
+    levelPainter.paint(canvas, Offset(rect.center.dx - (levelPainter.width / 2), dy));
+    dy += levelPainter.height + 2;
+    titlePainter.paint(canvas, Offset(rect.center.dx - (titlePainter.width / 2), dy));
+    dy += titlePainter.height + 4;
+    if (hasDesc) {
+      descPainter.paint(canvas, Offset(rect.center.dx - (descPainter.width / 2), dy));
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PyramidPainter oldDelegate) {
+    return oldDelegate.levels != levels || oldDelegate.textDirection != textDirection;
+  }
+}
+
+class _HierarchyLevel {
+  final int level;
+  final String title;
+  final String description;
+
+  _HierarchyLevel({
+    required this.level,
+    required this.title,
+    required this.description,
+  });
+}

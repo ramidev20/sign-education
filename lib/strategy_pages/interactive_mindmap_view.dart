@@ -1,9 +1,6 @@
-import 'dart:io';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:html_to_pdf_plus/html_to_pdf_plus.dart';
-import 'dart:convert';
 
 class InteractiveMindMapView extends StatefulWidget {
   final Map<String, dynamic> mindMapJson;
@@ -20,253 +17,362 @@ class InteractiveMindMapView extends StatefulWidget {
 }
 
 class _InteractiveMindMapViewState extends State<InteractiveMindMapView> {
-  bool _loading = true;
-  File? _pdfFile;
+  static const _nodeSize = Size(230, 108);
+  static const _baseCanvasSize = Size(1600, 1200);
+  static const _horizontalGap = 56.0;
+  static const _verticalGap = 165.0;
+  static const _topMargin = 110.0;
+  static const _sideMargin = 80.0;
+
+  final _transform = TransformationController();
+  final _viewerKey = GlobalKey();
+
+  late Map<String, dynamic> _root;
+  late Size _canvasSize;
 
   @override
   void initState() {
     super.initState();
-    _generatePdf();
+    _root = _normalizeMindMap(Map<String, dynamic>.from(widget.mindMapJson));
+    _layoutTree();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fitInView());
   }
 
-  Future<void> _generatePdf() async {
-    final html = _htmlTemplate.replaceFirst(
-      '{{MINDMAP_HTML}}',
-      jsonEncode(widget.mindMapJson),
-    );
+  Map<String, dynamic> _normalizeMindMap(Map<String, dynamic> root) {
+    root['id'] ??= 'root';
+    root['content'] ??= 'الخريطة الذهنية';
+    root['nodes'] ??= <dynamic>[];
 
-    final dir = await getApplicationDocumentsDirectory();
-    final fileName = '${widget.mindMapJson['content'] ?? 'mindmap'}.pdf';
-
-    final file = await HtmlToPdf.convertFromHtmlContent(
-      htmlContent: html,
-      configuration: PdfConfiguration(
-        targetDirectory: dir.path,
-        targetName: fileName.replaceAll('.pdf', ''),
-        printSize: PrintSize.A4,
-        printOrientation: PrintOrientation.Landscape,
-      ),
-    );
-
-    setState(() {
-      _pdfFile = file;
-      _loading = false;
-    });
-  }
-
-  /// Recursively builds HTML mind map nodes
-  String _buildMindMapHtml(Map<String, dynamic> node, [int level = 0]) {
-    final content = node['content'] ?? '';
-    final children = node['nodes'] ?? [];
-    final buffer = StringBuffer();
-
-    buffer.writeln('<div class="node level-$level">$content</div>');
-
-    if (children.isNotEmpty) {
-      buffer.writeln('<div class="children level-$level">');
-      for (final child in children) {
-        buffer.writeln('<div class="edge"></div>');
-        buffer.writeln(_buildMindMapHtml(child, level + 1));
+    void walk(Map<String, dynamic> node) {
+      node['content'] ??= '';
+      node['nodes'] ??= <dynamic>[];
+      for (final child in _children(node)) {
+        walk(child);
       }
-      buffer.writeln('</div>');
     }
 
-    return buffer.toString();
+    walk(root);
+    return root;
+  }
+
+  List<Map<String, dynamic>> _children(Map<String, dynamic> node) {
+    final raw = node['nodes'];
+    if (raw is! List) {
+      node['nodes'] = <dynamic>[];
+      return <Map<String, dynamic>>[];
+    }
+    final result = <Map<String, dynamic>>[];
+    for (final item in raw) {
+      if (item is Map<String, dynamic>) {
+        result.add(item);
+      } else if (item is Map) {
+        result.add(Map<String, dynamic>.from(item));
+      }
+    }
+    node['nodes'] = result;
+    return result;
+  }
+
+  Iterable<Map<String, dynamic>> _walk(Map<String, dynamic> node) sync* {
+    yield node;
+    for (final child in _children(node)) {
+      yield* _walk(child);
+    }
+  }
+
+  int _maxDepth(Map<String, dynamic> node, [int depth = 0]) {
+    final children = _children(node);
+    if (children.isEmpty) return depth;
+    var d = depth;
+    for (final child in children) {
+      d = max(d, _maxDepth(child, depth + 1));
+    }
+    return d;
+  }
+
+  double _subtreeWidth(Map<String, dynamic> node) {
+    final children = _children(node);
+    final minWidth = _nodeSize.width + 24;
+    if (children.isEmpty) return minWidth;
+
+    var total = 0.0;
+    for (var i = 0; i < children.length; i++) {
+      total += _subtreeWidth(children[i]);
+      if (i < children.length - 1) total += _horizontalGap;
+    }
+    return max(total, minWidth);
+  }
+
+  void _setNodePos(Map<String, dynamic> node, Offset pos) {
+    node['pos'] = {'x': pos.dx, 'y': pos.dy};
+  }
+
+  Offset _nodePos(Map<String, dynamic> node) {
+    final p = Map<String, dynamic>.from(node['pos'] ?? const {});
+    final x = (p['x'] is num) ? (p['x'] as num).toDouble() : 0.0;
+    final y = (p['y'] is num) ? (p['y'] as num).toDouble() : 0.0;
+    return Offset(x, y);
+  }
+
+  void _layoutNode(Map<String, dynamic> node, double left, int depth) {
+    final width = _subtreeWidth(node);
+    final centerX = left + (width / 2);
+    final y = _topMargin + (depth * _verticalGap);
+    _setNodePos(node, Offset(centerX, y));
+
+    final children = _children(node);
+    var childLeft = left;
+    for (final child in children) {
+      final childWidth = _subtreeWidth(child);
+      _layoutNode(child, childLeft, depth + 1);
+      childLeft += childWidth + _horizontalGap;
+    }
+  }
+
+  void _layoutTree() {
+    final treeWidth = _subtreeWidth(_root);
+    final depth = _maxDepth(_root);
+
+    final width = max(_baseCanvasSize.width, treeWidth + (_sideMargin * 2));
+    final height = max(
+      _baseCanvasSize.height,
+      _topMargin + (depth * _verticalGap) + 220,
+    );
+    _canvasSize = Size(width, height);
+
+    final left = (width - treeWidth) / 2;
+    _layoutNode(_root, left, 0);
+  }
+
+  Rect _treeBounds() {
+    var minX = double.infinity;
+    var minY = double.infinity;
+    var maxX = -double.infinity;
+    var maxY = -double.infinity;
+
+    for (final node in _walk(_root)) {
+      final p = _nodePos(node);
+      minX = min(minX, p.dx - (_nodeSize.width / 2));
+      maxX = max(maxX, p.dx + (_nodeSize.width / 2));
+      minY = min(minY, p.dy - (_nodeSize.height / 2));
+      maxY = max(maxY, p.dy + (_nodeSize.height / 2));
+    }
+
+    if (!minX.isFinite || !minY.isFinite || !maxX.isFinite || !maxY.isFinite) {
+      return Rect.fromLTWH(0, 0, _canvasSize.width, _canvasSize.height);
+    }
+    return Rect.fromLTRB(minX, minY, maxX, maxY);
+  }
+
+  void _fitInView() {
+    if (!mounted) return;
+    final viewerBox = _viewerKey.currentContext?.findRenderObject() as RenderBox?;
+    final viewport = viewerBox?.size ?? context.size;
+    if (viewport == null || viewport.width <= 0 || viewport.height <= 0) return;
+
+    final bounds = _treeBounds().inflate(40);
+    const horizontalPadding = 24.0;
+    const topPadding = 20.0;
+    const bottomPadding = 86.0;
+
+    final availableWidth = max(1.0, viewport.width - (horizontalPadding * 2));
+    final availableHeight = max(1.0, viewport.height - topPadding - bottomPadding);
+
+    final scaleX = availableWidth / bounds.width;
+    final scaleY = availableHeight / bounds.height;
+    final scale = min(1.0, max(0.33, min(scaleX, scaleY)));
+
+    final tx = ((horizontalPadding + (availableWidth / 2)) -
+        ((bounds.left + bounds.width / 2) * scale));
+    final ty =
+        ((topPadding + (availableHeight / 2)) - ((bounds.top + bounds.height / 2) * scale));
+
+    _transform.value = Matrix4.identity()
+      ..translate(tx, ty)
+      ..scale(scale);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Mind Map PDF')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _pdfFile != null
-          ? SfPdfViewer.file(_pdfFile!)
-          : const Center(child: Text('PDF generation failed')),
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final title = (_root['content'] ?? 'الخريطة الذهنية').toString();
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(title),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              tooltip: 'ضبط العرض',
+              onPressed: _fitInView,
+              icon: const Icon(Icons.center_focus_strong),
+            ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            InteractiveViewer(
+              key: _viewerKey,
+              transformationController: _transform,
+              constrained: false,
+              clipBehavior: Clip.none,
+              boundaryMargin: const EdgeInsets.all(600),
+              minScale: 0.25,
+              maxScale: 2.8,
+              child: SizedBox(
+                width: _canvasSize.width,
+                height: _canvasSize.height,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _MindMapEdgesPainter(
+                          root: _root,
+                          nodePos: _nodePos,
+                          childrenOf: _children,
+                          color: cs.primary.withOpacity(0.55),
+                        ),
+                      ),
+                    ),
+                    for (final node in _walk(_root))
+                      Positioned(
+                        left: _nodePos(node).dx - (_nodeSize.width / 2),
+                        top: _nodePos(node).dy - (_nodeSize.height / 2),
+                        width: _nodeSize.width,
+                        height: _nodeSize.height,
+                        child: _MindMapNodeCard(
+                          title: node['content']?.toString() ?? '',
+                          level: _nodeLevel(node['id']?.toString() ?? '', _root),
+                          isRoot: node['id']?.toString() == (_root['id']?.toString() ?? 'root'),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cs.surface.withOpacity(0.92),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: cs.outlineVariant),
+                ),
+                child: const Text(
+                  'عرض شجري للخريطة الذهنية. يمكنك التكبير/التصغير والسحب لتحريك المخطط.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  int _nodeLevel(String id, Map<String, dynamic> node, [int depth = 1]) {
+    if (node['id']?.toString() == id) return depth;
+    for (final child in _children(node)) {
+      final found = _nodeLevel(id, child, depth + 1);
+      if (found != -1) return found;
+    }
+    return -1;
+  }
+}
+
+class _MindMapNodeCard extends StatelessWidget {
+  final String title;
+  final int level;
+  final bool isRoot;
+
+  const _MindMapNodeCard({
+    required this.title,
+    required this.level,
+    required this.isRoot,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Material(
+      color: cs.surface,
+      elevation: 2,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              isRoot ? 'الجذر' : 'المستوى ${max(1, level)}',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: cs.primary,
+                fontWeight: FontWeight.w800,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
-const String _htmlTemplate = r'''
-<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-<meta charset="utf-8"/>
-<title>الخريطة الذهنية</title>
-<style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    background: #f7f9fb;
-    font-family: "Cairo", "Segoe UI", sans-serif;
-  }
+class _MindMapEdgesPainter extends CustomPainter {
+  final Map<String, dynamic> root;
+  final Offset Function(Map<String, dynamic> node) nodePos;
+  final List<Map<String, dynamic>> Function(Map<String, dynamic> node) childrenOf;
+  final Color color;
 
-  #map {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-  }
-
-  svg {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-  }
-
-  .node {
-    position: absolute;
-    padding: 8px 12px;
-    border-radius: 10px;
-    text-align: center;
-    white-space: normal;
-    word-wrap: break-word;
-    background: white;
-    border: 2px solid #dbeafe;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    font-weight: 600;
-    font-size: 12px;
-    line-height: 1.3;
-    color: #1e3a8a;
-    transform: translate(-50%, -50%);
-    max-width: 140px;
-    min-width: 80px;
-  }
-
-  .node.root {
-    background: #2563eb;
-    color: white;
-    border: 2px solid #1d4ed8;
-    font-size: 15px;
-    font-weight: bold;
-    max-width: 200px;
-    min-width: 120px;
-    padding: 10px 16px;
-  }
-
-  path.link {
-    fill: none;
-    stroke: #93c5fd;
-    stroke-width: 2.5;
-    opacity: 0.9;
-  }
-</style>
-</head>
-<body>
-<div id="map">
-  <svg id="links"></svg>
-  <div id="nodes"></div>
-</div>
-
-<script>
-const data = {{MINDMAP_HTML}};
-
-const pageWidth = 1123;  // A4 landscape width in px
-const pageHeight = 794;  // A4 landscape height in px
-const margin = 60;
-const rootWidth = 200; // match .node.root max-width
-const centerX = pageWidth / 2;
-const centerY = pageHeight / 2;
-const svg = document.getElementById("links");
-const nodeContainer = document.getElementById("nodes");
-
-function getSubtreeWeight(node) {
-  if (!node.nodes || node.nodes.length === 0) return 1;
-  return 1 + node.nodes.map(getSubtreeWeight).reduce((a, b) => a + b, 0);
-}
-
-function balanceBranches(nodes) {
-  const sorted = [...nodes].sort((a, b) => getSubtreeWeight(b) - getSubtreeWeight(a));
-  const left = [], right = [];
-  let lw = 0, rw = 0;
-  for (const n of sorted) {
-    const w = getSubtreeWeight(n);
-    if (lw <= rw) { left.push(n); lw += w; } else { right.push(n); rw += w; }
-  }
-  return { left, right };
-}
-
-function getSubtreeHeight(node) {
-  if (!node.nodes || node.nodes.length === 0) return 1;
-  return node.nodes.map(getSubtreeHeight).reduce((a, b) => a + b, 0);
-}
-
-function getMaxDepth(node, depth = 0) {
-  if (!node.nodes || node.nodes.length === 0) return depth;
-  return Math.max(...node.nodes.map(n => getMaxDepth(n, depth + 1)));
-}
-
-function calculateSpacing(root) {
-  const { left, right } = balanceBranches(root.nodes);
-  const maxDepth = Math.max(
-    getMaxDepth({ nodes: left }),
-    getMaxDepth({ nodes: right })
-  );
-  const totalHeight = Math.max(
-    getSubtreeHeight({ nodes: left }),
-    getSubtreeHeight({ nodes: right })
-  );
-
-  const availableWidth = (pageWidth - 2 * margin - rootWidth) / 2;
-  const availableHeight = pageHeight - 2 * margin;
-
-  const minSpacingX = 120; // minimum horizontal spacing between nodes
-  const idealSpacingX = availableWidth / (maxDepth || 1);
-  const spacingX = Math.max(minSpacingX, idealSpacingX);
-
-  const spacingY = Math.min(80, availableHeight / (totalHeight || 1));
-
-  return { spacingX, spacingY };
-}
-
-function layout(node, x, y, side = 1, level = 1, spacing) {
-  const { spacingX, spacingY } = spacing;
-  let offsetY = y - (getSubtreeHeight(node) - 1) * spacingY / 2;
-
-  node.nodes.forEach((child) => {
-    const h = getSubtreeHeight(child);
-    const childY = offsetY + (h - 1) * spacingY / 2;
-    const childX = x + side * spacingX;
-    createLink(x, y, childX, childY);
-    createNode(child, childX, childY, level);
-    layout(child, childX, childY, side, level + 1, spacing);
-    offsetY += h * spacingY;
+  _MindMapEdgesPainter({
+    required this.root,
+    required this.nodePos,
+    required this.childrenOf,
+    required this.color,
   });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2;
+
+    void walk(Map<String, dynamic> parent) {
+      final parentPos = nodePos(parent);
+      for (final child in childrenOf(parent)) {
+        final childPos = nodePos(child);
+        canvas.drawLine(parentPos, childPos, paint);
+        walk(child);
+      }
+    }
+
+    walk(root);
+  }
+
+  @override
+  bool shouldRepaint(covariant _MindMapEdgesPainter oldDelegate) {
+    return oldDelegate.root != root || oldDelegate.color != color;
+  }
 }
-
-function createNode(node, x, y, level) {
-  const div = document.createElement("div");
-  div.className = "node" + (level === 0 ? " root" : "");
-  div.textContent = node.content;
-  div.style.left = x + "px";
-  div.style.top = y + "px";
-  nodeContainer.appendChild(div);
-}
-
-function createLink(x1, y1, x2, y2) {
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  const cx1 = x1 - (x1 - x2) * 0.4;
-  const cx2 = x2 + (x1 - x2) * 0.4;
-  const d = `M ${x1},${y1} C ${cx1},${y1} ${cx2},${y2} ${x2},${y2}`;
-  path.setAttribute("d", d);
-  path.classList.add("link");
-  svg.appendChild(path);
-}
-
-// --- Main Execution ---
-const spacing = calculateSpacing(data);
-const { left, right } = balanceBranches(data.nodes);
-
-// Draw root node once
-createNode(data, centerX, centerY, 0);
-
-// Layout left and right subtrees symmetrically
-layout({ nodes: left }, centerX, centerY, -1, 1, spacing);
-layout({ nodes: right }, centerX, centerY, 1, 1, spacing);
-</script>
-</body>
-</html>
-''';

@@ -88,7 +88,7 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
 
       final sharedResult = await supabase
           .from('assignment_shares')
-          .select('created_at, assignments(*)')
+          .select('created_at, assignments!assignment_shares_assignment_fk(*)')
           .eq('user_id', widget.user.id)
           .order('created_at', ascending: false)
           .range(_offset, _offset + _pageSize - 1);

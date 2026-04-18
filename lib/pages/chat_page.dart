@@ -25,6 +25,8 @@ class _ChatPageState extends State<ChatPage> {
   late final chat_core.ChatController _chatController;
   RealtimeChannel? _channel;
   final List<chat_core.TextMessage> _messages = [];
+  final Set<String> _messageIds = <String>{};
+  final Set<String> _animateMessageIds = <String>{};
 
   DateTime? _oldestCreatedAt;
   bool _loadingMore = false;
@@ -84,13 +86,19 @@ class _ChatPageState extends State<ChatPage> {
       classGroupId: widget.group.classGroupId,
       onMessage: (payload) async {
         // only insert the new message
+        final messageId = payload['message_id']?.toString();
+        if (messageId == null || messageId.isEmpty) return;
+        if (_messageIds.contains(messageId)) return;
+
         final message = chat_core.TextMessage(
-          id: payload['message_id'].toString(),
+          id: messageId,
           authorId: payload['sender_id'].toString(),
           createdAt: DateTime.parse(payload['created_at']).toUtc(),
           text: payload['text'] ?? '',
         );
 
+        _messageIds.add(messageId);
+        _animateMessageIds.add(messageId);
         _messages.add(message);
         _chatController.insertMessage(message);
       },
@@ -113,8 +121,9 @@ class _ChatPageState extends State<ChatPage> {
         .limit(_pageSize);
 
     final messages = (response as List).map((m) {
+      final id = m['message_id']?.toString() ?? const Uuid().v4();
       return chat_core.TextMessage(
-        id: m['message_id']?.toString() ?? const Uuid().v4(),
+        id: id,
         authorId: m['sender_id'].toString(),
         createdAt:
             DateTime.tryParse(m['created_at'] ?? '')?.toUtc() ??
@@ -126,6 +135,9 @@ class _ChatPageState extends State<ChatPage> {
     _messages
       ..clear()
       ..addAll(messages);
+    _messageIds
+      ..clear()
+      ..addAll(messages.map((m) => m.id));
     _oldestCreatedAt = _messages.isNotEmpty ? _messages.first.createdAt : null;
     _hasMore = (response as List).length == _pageSize;
 
@@ -159,8 +171,9 @@ class _ChatPageState extends State<ChatPage> {
           .limit(_pageSize);
 
       final page = (response as List).map((m) {
+        final id = m['message_id']?.toString() ?? const Uuid().v4();
         return chat_core.TextMessage(
-          id: m['message_id']?.toString() ?? const Uuid().v4(),
+          id: id,
           authorId: m['sender_id'].toString(),
           createdAt:
               DateTime.tryParse(m['created_at'] ?? '')?.toUtc() ??
@@ -172,6 +185,7 @@ class _ChatPageState extends State<ChatPage> {
       if (!mounted) return;
       setState(() {
         _messages.insertAll(0, page);
+        _messageIds.addAll(page.map((m) => m.id));
         _oldestCreatedAt = _messages.isNotEmpty ? _messages.first.createdAt : null;
         _hasMore = page.length == _pageSize;
       });
@@ -194,13 +208,16 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _handleSendMessage(String text) async {
+    final messageId = const Uuid().v4();
     final message = chat_core.TextMessage(
-      id: const Uuid().v4(),
+      id: messageId,
       authorId: widget.user.id,
       createdAt: DateTime.now().toUtc(),
       text: text,
     );
 
+    _messageIds.add(messageId);
+    _animateMessageIds.add(messageId);
     _messages.add(message);
     _chatController.insertMessage(message);
 
@@ -208,6 +225,7 @@ class _ChatPageState extends State<ChatPage> {
       classGroupId: widget.group.classGroupId,
       senderId: widget.user.id,
       text: text,
+      messageId: messageId,
     );
   }
 
@@ -284,7 +302,7 @@ class _ChatPageState extends State<ChatPage> {
         onMessageSend: _handleSendMessage,
         resolveUser: _resolveUser,
         theme: chat_core.ChatTheme.fromThemeData(theme),
-        backgroundColor: theme.scaffoldBackgroundColor,
+        backgroundColor: theme.colorScheme.background,
 
         onMessageLongPress: onMessageLongPress,
 
@@ -300,8 +318,13 @@ class _ChatPageState extends State<ChatPage> {
                 bool? isRemoved,
                 required bool isSentByMe,
               }) {
+                final shouldAnimate = _animateMessageIds.remove(message.id);
+                final sizeFactor = shouldAnimate
+                    ? animation
+                    : const AlwaysStoppedAnimation<double>(1);
+
                 return SizeTransition(
-                  sizeFactor: animation,
+                  sizeFactor: sizeFactor,
                   child: FutureBuilder<chat_core.User>(
                     future: _resolveUser(message.authorId), // fetch user info
                     builder: (context, snapshot) {

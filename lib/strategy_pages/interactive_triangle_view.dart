@@ -71,7 +71,7 @@ class _InteractiveTriangleViewState extends State<InteractiveTriangleView> {
 
   String _generateHtmlContent(Map<String, dynamic> data) {
     final triangleMap = data['triangleMap'] as List<dynamic>? ?? [];
-    final title = data['title'] ?? 'التريـنـغل التعليمي';
+    final title = data['title'] ?? 'المثلث التعليمي';
     final desc = data['description'] ?? '';
 
     // Ensure we have 3 corners minimum
@@ -140,6 +140,14 @@ class _InteractiveTriangleViewState extends State<InteractiveTriangleView> {
     height: 520px;
     margin: auto;
   }
+  .triangle-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
   .corner {
     position: absolute;
     width: 260px;
@@ -148,6 +156,7 @@ class _InteractiveTriangleViewState extends State<InteractiveTriangleView> {
     color: white;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     text-align: right;
+    z-index: 2;
   }
   .corner .title {
     font-weight: bold;
@@ -172,6 +181,11 @@ class _InteractiveTriangleViewState extends State<InteractiveTriangleView> {
   <p class="desc">$desc</p>
 
   <div class="triangle-container">
+    <svg class="triangle-svg" viewBox="0 0 600 520" preserveAspectRatio="none">
+      <line x1="300" y1="45" x2="85" y2="495" stroke="#93c5fd" stroke-width="4"/>
+      <line x1="300" y1="45" x2="515" y2="495" stroke="#93c5fd" stroke-width="4"/>
+      <line x1="85" y1="495" x2="515" y2="495" stroke="#93c5fd" stroke-width="4"/>
+    </svg>
     <div class="corner top">${buildCorner(top)}</div>
     <div class="corner left">${buildCorner(left)}</div>
     <div class="corner right">${buildCorner(right)}</div>
@@ -262,37 +276,11 @@ class _InteractiveTriangleViewState extends State<InteractiveTriangleView> {
       );
     }
 
-    return Column(
-      children: [
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: _pdfFile != null
-                ? SfPdfViewer.file(_pdfFile!)
-                : const Center(child: Text('PDF not available')),
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {},
-                  child: const Text('Confirm'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: _pdfFile != null
+          ? SfPdfViewer.file(_pdfFile!)
+          : const Center(child: Text('PDF not available')),
     );
   }
 }

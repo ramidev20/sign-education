@@ -7,13 +7,13 @@ import 'package:sign_education/data/prompts.dart';
 /// API CONFIGURATION
 /// ================================
 const apiKey =
-    "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";
+    "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";
 const url = "https://openrouter.ai/api/v1/chat/completions";
-const model1 = "deepseek/deepseek-r1";
-const model = "openai/gpt-3.5-turbo-16k";
+const model = "openrouter/elephant-alpha";
+const model1 = "openai/gpt-3.5-turbo-16k";
 
 /// Common request timeout
-const requestTimeout = Duration(seconds: 120);
+const requestTimeout = Duration(seconds: 360);
 
 ///  HELPER FUNCTION
 /// ================================

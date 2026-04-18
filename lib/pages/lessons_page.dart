@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_classes.dart';
 import 'package:sign_education/data/db/db_helper_lessons.dart';
+import 'package:sign_education/data/dictionary_subjects.dart';
 import 'package:sign_education/data/labels_data.dart';
 import 'package:sign_education/data/models/lesson_model.dart';
 import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/pages/lesson_create_page.dart';
-import 'package:sign_education/pages/strategies_page.dart';
+import 'package:sign_education/pages/lesson_strategies_info_page.dart';
+import 'package:sign_education/pages/lesson_view_page.dart';
 import 'package:sign_education/utils/app_theme.dart';
 import 'package:sign_education/widgets/app_state.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 class LessonsPage extends StatefulWidget {
   final UserModel user;
@@ -19,35 +20,17 @@ class LessonsPage extends StatefulWidget {
 }
 
 class _LessonsPageState extends State<LessonsPage> {
-  // Student pagination (all groups in one query)
-  final ScrollController _scroll = ScrollController();
   final List<LessonModel> _lessons = [];
   bool _loading = true;
-  bool _loadingMore = false;
-  bool _hasMore = true;
-  int _offset = 0;
   List<String> _groupIds = [];
-  static const int _pageSize = 25;
+  String? _selectedStudentSubject;
+  static const int _pageSize = 50;
 
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(_onScroll);
     if (widget.user.role == 'student') {
       _initStudent();
-    }
-  }
-
-  @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (!_scroll.hasClients) return;
-    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200) {
-      _loadMore();
     }
   }
 
@@ -55,7 +38,7 @@ class _LessonsPageState extends State<LessonsPage> {
     try {
       final groups = await DbHelperClasses.getClassesByStudent(widget.user.id);
       _groupIds = groups.map((g) => g.classGroupId).where((id) => id.isNotEmpty).toList();
-      await _refresh();
+      await _refreshStudent();
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -65,84 +48,57 @@ class _LessonsPageState extends State<LessonsPage> {
     }
   }
 
-  Future<void> _refresh() async {
-    _lessons.clear();
-    _offset = 0;
-    _hasMore = true;
+  Future<void> _refreshStudent() async {
     setState(() => _loading = true);
-    await _loadMore();
-  }
-
-  Future<void> _loadMore() async {
-    if (_loadingMore || !_hasMore || _groupIds.isEmpty) {
-      if (mounted) setState(() => _loading = false);
+    _lessons.clear();
+    if (_groupIds.isEmpty) {
+      setState(() => _loading = false);
       return;
     }
 
-    setState(() => _loadingMore = true);
     try {
-      final page = await DbHelperLessons.getLessonsByClassGroupsPaged(
-        classGroupIds: _groupIds,
-        offset: _offset,
-        limit: _pageSize,
-      );
-
-      if (!mounted) return;
-      setState(() {
+      var offset = 0;
+      while (true) {
+        final page = await DbHelperLessons.getLessonsByClassGroupsPaged(
+          classGroupIds: _groupIds,
+          offset: offset,
+          limit: _pageSize,
+        );
         _lessons.addAll(page);
-        _offset += page.length;
-        _hasMore = page.length == _pageSize;
-        _loading = false;
-      });
+        if (page.length < _pageSize) break;
+        offset += page.length;
+      }
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('تعذر تحميل الدروس: $e')),
       );
     } finally {
-      if (mounted) setState(() => _loadingMore = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   void _viewLessonPdf(LessonModel lesson) {
-    if (lesson.fileUrl == null || lesson.fileUrl!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لا يوجد ملف PDF لهذا الدرس')),
-      );
-      return;
-    }
-
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => LessonPdfPage(lesson: lesson)),
+      MaterialPageRoute(
+        builder: (_) => LessonViewPage(lesson: lesson, user: widget.user),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final isTeacher = widget.user.role == 'teacher';
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('الدروس'),
-        centerTitle: true,
-        actions: [
-          if (isTeacher)
-            IconButton(
-              tooltip: 'إضافة درس',
-              icon: const Icon(Icons.add),
-              onPressed: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => LessonCreatePage(user: widget.user)),
-                );
-                if (!mounted) return;
-                setState(() {});
-              },
-            ),
-        ],
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('الدروس'),
+          centerTitle: true,
+        ),
+        body: isTeacher ? _buildTeacherView(context) : _buildStudentView(),
       ),
-      body: isTeacher ? _buildTeacherView(context) : _buildStudentView(),
     );
   }
 
@@ -162,41 +118,28 @@ class _LessonsPageState extends State<LessonsPage> {
         icon: Icons.menu_book_outlined,
         title: 'لا توجد دروس متاحة لك حالياً',
         actionLabel: 'تحديث',
-        onAction: _refresh,
+        onAction: _refreshStudent,
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _refresh,
-      child: ListView.builder(
-        controller: _scroll,
-        padding: const EdgeInsets.all(12),
-        itemCount: _lessons.length + (_hasMore ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index >= _lessons.length) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 18),
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-            );
-          }
-
-          final lesson = _lessons[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              leading: const Icon(Icons.menu_book_outlined),
-              title: Text(lesson.title ?? 'درس'),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text('المادة: ${subjectLabels[lesson.subject]}'),
-              ),
-              trailing: const Icon(Icons.picture_as_pdf_outlined),
-              onTap: () => _viewLessonPdf(lesson),
-            ),
-          );
+    if (_selectedStudentSubject == null) {
+      final subjects = _allStudentSubjects(_lessons);
+      return _LessonsSubjectsGrid(
+        title: 'اختر المادة',
+        subjects: subjects,
+        onTap: (subjectId) {
+          setState(() => _selectedStudentSubject = subjectId);
         },
-      ),
+      );
+    }
+
+    final selected = _selectedStudentSubject!;
+    final filtered = _lessons.where((l) => l.subject == selected).toList();
+    return _LessonsBySubjectList(
+      subjectId: selected,
+      lessons: filtered,
+      onBackToSubjects: () => setState(() => _selectedStudentSubject = null),
+      onOpenLesson: _viewLessonPdf,
     );
   }
 
@@ -206,7 +149,9 @@ class _LessonsPageState extends State<LessonsPage> {
       _TeacherTile(
         title: 'إضافة درس',
         icon: Icons.add_circle_outline,
-        gradient: LinearGradient(colors: [theme.colorScheme.primary, theme.colorScheme.secondary]),
+        gradient: LinearGradient(
+          colors: [theme.colorScheme.primary, theme.colorScheme.secondary],
+        ),
         onTap: () async {
           await Navigator.push(
             context,
@@ -229,24 +174,17 @@ class _LessonsPageState extends State<LessonsPage> {
       _TeacherTile(
         title: 'استراتيجيات التعلم',
         icon: Icons.auto_awesome_outlined,
-        gradient: LinearGradient(colors: [theme.colorScheme.primary, theme.colorScheme.secondary]),
+        gradient: LinearGradient(
+          colors: [theme.colorScheme.primary, theme.colorScheme.secondary],
+        ),
         onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => StrategiesPage(
-                user: widget.user,
-                title: "درس جديد",
-                subject: "غير محدد",
-              ),
+              builder: (_) => LessonStrategiesInfoPage(user: widget.user),
             ),
           );
         },
-      ),
-      _TeacherTile(
-        title: 'تحديث',
-        icon: Icons.refresh,
-        onTap: () => setState(() {}),
       ),
     ];
 
@@ -322,80 +260,334 @@ class _TeacherTile {
   });
 }
 
-class _TeacherLessonsArchive extends StatelessWidget {
+class _TeacherLessonsArchive extends StatefulWidget {
   final UserModel user;
   const _TeacherLessonsArchive({required this.user});
 
   @override
+  State<_TeacherLessonsArchive> createState() => _TeacherLessonsArchiveState();
+}
+
+class _TeacherLessonsArchiveState extends State<_TeacherLessonsArchive> {
+  String? _selectedSubject;
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('أرشيف الدروس')),
-      body: FutureBuilder<List<LessonModel>>(
-        future: DbHelperLessons.getLessonsByTeacher(user.id),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const AppLoading();
-          }
-          if (snapshot.hasError) {
-            return AppErrorState(
-              title: 'تعذر تحميل الأرشيف',
-              message: snapshot.error?.toString(),
-              actionLabel: 'إعادة المحاولة',
-              onAction: () => (context as Element).markNeedsBuild(),
-            );
-          }
-
-          final lessons = snapshot.data ?? [];
-          if (lessons.isEmpty) {
-            return const AppEmptyState(
-              icon: Icons.archive_outlined,
-              title: 'لا توجد دروس بعد',
-            );
-          }
-
-          return ListView.separated(
-            padding: const EdgeInsets.all(12),
-            itemCount: lessons.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final lesson = lessons[index];
-              return Card(
-                child: ListTile(
-                  leading: const Icon(Icons.menu_book_outlined),
-                  title: Text(lesson.title ?? 'درس'),
-                  subtitle: Text('المادة: ${subjectLabels[lesson.subject]}'),
-                  trailing: const Icon(Icons.picture_as_pdf_outlined),
-                  onTap: () {
-                    if (lesson.fileUrl == null || lesson.fileUrl!.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('لا يوجد ملف PDF لهذا الدرس')),
-                      );
-                      return;
-                    }
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => LessonPdfPage(lesson: lesson)),
-                    );
-                  },
-                ),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('أرشيف الدروس')),
+        body: FutureBuilder<List<LessonModel>>(
+          future: DbHelperLessons.getLessonsByTeacher(widget.user.id),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const AppLoading();
+            }
+            if (snapshot.hasError) {
+              return AppErrorState(
+                title: 'تعذر تحميل الأرشيف',
+                message: snapshot.error?.toString(),
+                actionLabel: 'إعادة المحاولة',
+                onAction: () => (context as Element).markNeedsBuild(),
               );
-            },
-          );
-        },
+            }
+
+            final lessons = snapshot.data ?? [];
+            if (lessons.isEmpty) {
+              return const AppEmptyState(
+                icon: Icons.archive_outlined,
+                title: 'لا توجد دروس بعد',
+              );
+            }
+
+            if (_selectedSubject == null) {
+              final subjects = _buildSubjectsFromLessons(lessons);
+              return _LessonsSubjectsGrid(
+                title: 'اختر المادة',
+                subjects: subjects,
+                onTap: (subjectId) => setState(() => _selectedSubject = subjectId),
+              );
+            }
+
+            final selected = _selectedSubject!;
+            final filtered = lessons.where((l) => l.subject == selected).toList();
+            return _LessonsBySubjectList(
+              subjectId: selected,
+              lessons: filtered,
+              onBackToSubjects: () => setState(() => _selectedSubject = null),
+              onOpenLesson: (lesson) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => LessonViewPage(
+                      lesson: lesson,
+                      user: widget.user,
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
 }
 
-class LessonPdfPage extends StatelessWidget {
-  final LessonModel lesson;
-  const LessonPdfPage({super.key, required this.lesson});
+class _LessonsBySubjectList extends StatelessWidget {
+  final String subjectId;
+  final List<LessonModel> lessons;
+  final VoidCallback onBackToSubjects;
+  final void Function(LessonModel lesson) onOpenLesson;
+
+  const _LessonsBySubjectList({
+    required this.subjectId,
+    required this.lessons,
+    required this.onBackToSubjects,
+    required this.onOpenLesson,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(lesson.title ?? 'درس')),
-      body: SfPdfViewer.network(lesson.fileUrl!),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+          child: Row(
+            children: [
+              TextButton.icon(
+                onPressed: onBackToSubjects,
+                icon: const Icon(Icons.grid_view_rounded),
+                label: const Text('كل المواد'),
+              ),
+              const Spacer(),
+              Text(
+                _subjectLabel(subjectId),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: lessons.isEmpty
+              ? const AppEmptyState(
+                  icon: Icons.menu_book_outlined,
+                  title: 'لا توجد دروس لهذه المادة',
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: lessons.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final lesson = lessons[index];
+                    return Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.menu_book_outlined),
+                        title: Text(lesson.title ?? 'درس'),
+                        subtitle: Text('المادة: ${_subjectLabel(lesson.subject)}'),
+                        trailing: const Icon(Icons.picture_as_pdf_outlined),
+                        onTap: () => onOpenLesson(lesson),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
+}
+
+class _LessonsSubjectsGrid extends StatelessWidget {
+  final String title;
+  final List<_SubjectUiItem> subjects;
+  final void Function(String subjectId) onTap;
+
+  const _LessonsSubjectsGrid({
+    required this.title,
+    required this.subjects,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (subjects.isEmpty) {
+      return const AppEmptyState(
+        icon: Icons.menu_book_outlined,
+        title: 'لا توجد مواد متاحة',
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GridView.builder(
+              itemCount: subjects.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.05,
+              ),
+              itemBuilder: (context, index) {
+                final item = subjects[index];
+                return _SubjectTile(
+                  title: item.title,
+                  icon: item.icon,
+                  color: item.color,
+                  onTap: () => onTap(item.id),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubjectTile extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _SubjectTile({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final onColor = ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+        ? Colors.white
+        : Colors.black;
+
+    return Material(
+      color: color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: onColor, size: 30),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SubjectUiItem {
+  final String id;
+  final String title;
+  final IconData icon;
+  final Color color;
+
+  const _SubjectUiItem({
+    required this.id,
+    required this.title,
+    required this.icon,
+    required this.color,
+  });
+}
+
+List<_SubjectUiItem> _buildSubjectsFromLessons(List<LessonModel> lessons) {
+  final ids = <String>{};
+  for (final lesson in lessons) {
+    if (lesson.subject.trim().isNotEmpty) {
+      ids.add(lesson.subject.trim());
+    }
+  }
+
+  final subjects = ids.map((id) => _subjectUi(id)).toList();
+  subjects.sort((a, b) => a.title.compareTo(b.title));
+  return subjects;
+}
+
+List<_SubjectUiItem> _allStudentSubjects(List<LessonModel> lessons) {
+  final all = <_SubjectUiItem>[
+    for (final s in dictionarySubjects)
+      _SubjectUiItem(
+        id: s.id,
+        title: s.titleAr,
+        icon: s.icon,
+        color: s.color,
+      ),
+  ];
+
+  final existingIds = all.map((s) => s.id).toSet();
+  for (final lesson in lessons) {
+    final id = lesson.subject.trim();
+    if (id.isEmpty || existingIds.contains(id)) continue;
+    all.add(_subjectUi(id));
+    existingIds.add(id);
+  }
+  return all;
+}
+
+_SubjectUiItem _subjectUi(String id) {
+  for (final ds in dictionarySubjects) {
+    if (ds.id != id) continue;
+    return _SubjectUiItem(
+      id: id,
+      title: ds.titleAr,
+      icon: ds.icon,
+      color: ds.color,
+    );
+  }
+
+  final colors = <Color>[
+    const Color(0xFF5B8DEF),
+    const Color(0xFF22C55E),
+    const Color(0xFFF59E0B),
+    const Color(0xFFEC4899),
+    const Color(0xFF0EA5E9),
+    const Color(0xFF8B5CF6),
+  ];
+  final index = id.codeUnits.fold<int>(0, (p, n) => p + n) % colors.length;
+  return _SubjectUiItem(
+    id: id,
+    title: _subjectLabel(id),
+    icon: Icons.menu_book_rounded,
+    color: colors[index],
+  );
+}
+
+String _subjectLabel(String subjectId) {
+  return subjectLabels[subjectId] ?? subjectId;
 }

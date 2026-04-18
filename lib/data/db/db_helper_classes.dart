@@ -6,6 +6,11 @@ import 'package:flutter/foundation.dart';
 class DbHelperClasses {
   static final supabase = Supabase.instance.client;
 
+  static const List<String> _classGroupsEmbeds = [
+    'class_group_id, class_groups!class_group_members_class_group_id_fkey(*)',
+    'class_group_id, class_groups!class_group_members_group_fk(*)',
+  ];
+
   static const List<String> _usersEmbeds = [
     'users!class_group_members_user_fk(*)',
     'users!class_group_members_user_id_fkey(*)',
@@ -109,10 +114,22 @@ class DbHelperClasses {
   static Future<List<ClassGroupModel>> getClassesByStudent(
     String studentId,
   ) async {
-    final response = await Supabase.instance.client
-        .from('class_group_members')
-        .select('class_group_id, class_groups(*)')
-        .eq('user_id', studentId);
+    Future<List<dynamic>> run(String embed) async {
+      return await Supabase.instance.client
+          .from('class_group_members')
+          .select(embed)
+          .eq('user_id', studentId);
+    }
+
+    late final List<dynamic> response;
+    try {
+      response = await run(_classGroupsEmbeds[0]);
+    } on PostgrestException catch (e) {
+      debugPrint(
+        'DbHelperClasses.getClassesByStudent: embed failed (${_classGroupsEmbeds[0]}): ${e.code} ${e.message}',
+      );
+      response = await run(_classGroupsEmbeds[1]);
+    }
 
     final List<ClassGroupModel> groups = [];
     for (var row in response) {
@@ -208,8 +225,10 @@ class DbHelperClasses {
     required String classGroupId,
     required String senderId,
     required String text,
+    String? messageId,
   }) async {
     await supabase.from('messages').insert({
+      if (messageId != null) 'message_id': messageId,
       'class_group_id': classGroupId,
       'sender_id': senderId,
       'text': text,

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/models/user_model.dart';
+import 'package:sign_education/pages/about_page.dart';
 import 'package:sign_education/pages/assignments_page.dart';
 import 'package:sign_education/pages/dictionary_page.dart';
 import 'package:sign_education/pages/groups_page.dart';
 import 'package:sign_education/pages/lessons_page.dart';
+import 'package:sign_education/pages/pricing_page.dart';
 import 'package:sign_education/pages/profile_page.dart';
+import 'package:sign_education/pages/updates_page.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 class HomePage extends StatefulWidget {
@@ -31,21 +34,21 @@ class _HomePageState extends State<HomePage> {
       image: 'assets/images/slides/slide_1.jpg',
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => LessonsPage(user: widget.user)),
+        MaterialPageRoute(builder: (_) => const AboutUsPage()),
       ),
     ),
     _HomeSlide(
       image: 'assets/images/slides/slide_2.jpg',
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => AssignmentsPage(user: widget.user)),
+        MaterialPageRoute(builder: (_) => const UpdatesPage()),
       ),
     ),
     _HomeSlide(
       image: 'assets/images/slides/slide_3.jpg',
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => GroupsPage(user: widget.user)),
+        MaterialPageRoute(builder: (_) => const PricingPage()),
       ),
     ),
   ];
@@ -87,6 +90,21 @@ class _HomePageState extends State<HomePage> {
         context,
         MaterialPageRoute(builder: (context) => GroupsPage(user: widget.user)),
       ),
+    },
+  ];
+
+  List<Map<String, dynamic>> get adPromotions => [
+    {
+      'title': 'إعلان تعليمي',
+      'description': 'روّج لدورتك أو محتواك التعليمي داخل المنصة.',
+      'icon': Icons.ads_click_outlined,
+      'color': const Color(0xFF8B5CF6),
+    },
+    {
+      'title': 'رعاية المحتوى',
+      'description': 'مساحات رعاية للمدارس والمبادرات التعليمية.',
+      'icon': Icons.verified_outlined,
+      'color': const Color(0xFF06B6D4),
     },
   ];
 
@@ -331,9 +349,97 @@ class _HomePageState extends State<HomePage> {
                       );
                     },
                   ),
+                  const SizedBox(height: 16),
+                  _buildSectionTitle(context, "مساحة إعلانية"),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 132,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: adPromotions.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 10),
+                      itemBuilder: (context, index) {
+                        final ad = adPromotions[index];
+                        return _buildAdPromoCard(context, ad);
+                      },
+                    ),
+                  ),
                   const SizedBox(height: 32),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(BuildContext context, String text) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Text(
+          text,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdPromoCard(BuildContext context, Map<String, dynamic> ad) {
+    final theme = Theme.of(context);
+    final color = ad['color'] as Color;
+    return Container(
+      width: 270,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(ad['icon'] as IconData, color: color),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  ad['title'] as String,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            ad['description'] as String,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const Spacer(),
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: TextButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('سيتم تفعيل إدارة الإعلانات قريباً.')),
+                );
+              },
+              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+              label: const Text('تفاصيل'),
             ),
           ),
         ],
