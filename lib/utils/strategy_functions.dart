@@ -9,7 +9,7 @@ import 'package:sign_education/data/prompts.dart';
 const apiKey =
     "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";
 const url = "https://openrouter.ai/api/v1/chat/completions";
-const model = "openrouter/elephant-alpha";
+const model = "inclusionai/ling-2.6-flash:free";
 const model1 = "openai/gpt-3.5-turbo-16k";
 
 /// Common request timeout

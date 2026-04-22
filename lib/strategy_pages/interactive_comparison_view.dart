@@ -1,10 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:html_to_pdf_plus/html_to_pdf_plus.dart';
 
-class InteractiveComparisonView extends StatefulWidget {
+class InteractiveComparisonView extends StatelessWidget {
   final Map<String, dynamic> comparisonJson;
   final String username;
 
@@ -15,238 +11,184 @@ class InteractiveComparisonView extends StatefulWidget {
   });
 
   @override
-  State<InteractiveComparisonView> createState() =>
-      _InteractiveComparisonViewState();
-}
-
-class _InteractiveComparisonViewState extends State<InteractiveComparisonView> {
-  bool _isGenerating = true;
-  bool _hasGenerated = false;
-  File? _pdfFile;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    if (!_hasGenerated) {
-      _hasGenerated = true;
-      _generatePdfFromHtml();
-    }
-  }
-
-  Future<void> _generatePdfFromHtml() async {
-    try {
-      final htmlContent = _generateHtmlContent(widget.comparisonJson);
-
-      final dir = await getApplicationDocumentsDirectory();
-      final fileName = _getPdfFileName();
-
-      // ✅ Use html_to_pdf_plus for conversion
-      final pdfFile = await HtmlToPdf.convertFromHtmlContent(
-        htmlContent: htmlContent,
-
-        configuration: PdfConfiguration(
-          targetDirectory: dir.path,
-          targetName: fileName,
-          printSize: PrintSize.A4,
-          printOrientation: PrintOrientation.Portrait,
-          // optionally set margins
-        ),
-      );
-
-      if (mounted) {
-        setState(() {
-          _pdfFile = pdfFile;
-          _isGenerating = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = 'Failed to generate PDF: $e';
-          _isGenerating = false;
-        });
-      }
-    }
-  }
-
-  String _generateHtmlContent(Map<String, dynamic> data) {
-    final tableData = data["comparisonTable"] as List<dynamic>? ?? [];
-    if (tableData.isEmpty) {
-      return '''
-      <html dir="rtl">
-      <head><meta charset="utf-8"/></head>
-      <body><h2>لا توجد بيانات للمقارنة</h2></body></html>
-    ''';
-    }
-
-    final Set<String> options = {};
-    for (var item in tableData) {
-      final key = item.keys.first;
-      final values = item[key] as Map<String, dynamic>;
-      options.addAll(values.keys);
-    }
-
-    final headerRow = StringBuffer('<tr><th>المعيار</th>');
-    for (final opt in options) {
-      headerRow.write('<th>$opt</th>');
-    }
-    headerRow.write('</tr>');
-
-    final rows = StringBuffer();
-    for (final item in tableData) {
-      final criterion = item.keys.first;
-      final values = item[criterion] as Map<String, dynamic>;
-      rows.write('<tr><td>$criterion</td>');
-      for (final opt in options) {
-        rows.write('<td>${values[opt] ?? '-'}</td>');
-      }
-      rows.write('</tr>');
-    }
-
-    return '''
-<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-  <meta charset="utf-8"/>
-  <title>${data["title"] ?? "جدول المقارنة"}</title>
-  <style>
-    body {
-      font-family: 'Cairo', sans-serif;
-      direction: rtl;
-      padding: 40px;
-      background: #fff;
-      color: #1e293b;
-    }
-    h1 {
-      text-align: center;
-      color: #1e3a8a;
-      margin-bottom: 32px;
-      font-size: 28px;
-      border-bottom: 3px solid #3b82f6;
-      padding-bottom: 8px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      background: #ffffff;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    th, td {
-      border: 1px solid #cbd5e1;
-      padding: 12px;
-      text-align: center;
-    }
-    th {
-      background-color: #3b82f6;
-      color: white;
-    }
-    tr:nth-child(even) { background-color: #f8fafc; }
-    .footer {
-      margin-top: 30px;
-      text-align: center;
-      color: #64748b;
-      font-size: 14px;
-    }
-  </style>
-</head>
-<body>
-  <h1>${data["title"] ?? "جدول المقارنة"}</h1>
-  <table>
-    ${headerRow.toString()}
-    ${rows.toString()}
-  </table>
-  <div class="footer">تم إنشاؤه بواسطة Sign Education</div>
-</body>
-</html>
-''';
-  }
-
-  String _getPdfFileName() {
-    final title = widget.comparisonJson['title'] ?? 'Comparison';
-    final sanitized = title.toString().replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-    return '$sanitized.pdf';
-  }
-
-  void _retryGeneration() {
-    setState(() {
-      _isGenerating = true;
-      _error = null;
-    });
-    _generatePdfFromHtml();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Generating Comparison PDF'),
-        actions: [
-          if (_isGenerating)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+    final title = (comparisonJson['title'] ?? 'جدول المقارنة').toString();
+    final normalized = _normalizeTable(comparisonJson);
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(title),
+          centerTitle: true,
+        ),
+        body: normalized.options.isEmpty || normalized.rows.isEmpty
+            ? const Center(child: Text('لا توجد بيانات مقارنة لعرضها'))
+            : LayoutBuilder(
+                builder: (context, constraints) {
+                  final tableMinWidth = (normalized.options.length + 1) * 180.0;
+                  final width = tableMinWidth < constraints.maxWidth
+                      ? constraints.maxWidth
+                      : tableMinWidth;
+
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(12),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: SizedBox(
+                        width: width,
+                        child: Card(
+                          clipBehavior: Clip.antiAlias,
+                          child: DataTable(
+                            headingRowHeight: 60,
+                            dataRowMinHeight: 76,
+                            dataRowMaxHeight: 132,
+                            columnSpacing: 14,
+                            horizontalMargin: 14,
+                            headingRowColor: MaterialStateProperty.all(
+                              Theme.of(context)
+                                  .colorScheme
+                                  .primaryContainer
+                                  .withOpacity(0.92),
+                            ),
+                            columns: [
+                              const DataColumn(
+                                label: Text(
+                                  'المعيار',
+                                  style: TextStyle(fontWeight: FontWeight.w800),
+                                ),
+                              ),
+                              for (final option in normalized.options)
+                                DataColumn(
+                                  label: Text(
+                                    option,
+                                    style: const TextStyle(fontWeight: FontWeight.w800),
+                                  ),
+                                ),
+                            ],
+                            rows: [
+                              for (var rowIndex = 0;
+                                  rowIndex < normalized.rows.length;
+                                  rowIndex++)
+                                _buildRow(
+                                  context: context,
+                                  rowIndex: rowIndex,
+                                  row: normalized.rows[rowIndex],
+                                  options: normalized.options,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+      ),
+    );
+  }
+
+  DataRow _buildRow({
+    required BuildContext context,
+    required int rowIndex,
+    required _ComparisonRow row,
+    required List<String> options,
+  }) {
+    final stripe = _rowStripe(rowIndex);
+    final criterionBg = stripe.withOpacity(0.30);
+    final defaultBg = Theme.of(context).colorScheme.surface;
+
+    return DataRow(
+      cells: [
+        DataCell(
+          Container(
+            constraints: const BoxConstraints(minWidth: 170),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            decoration: BoxDecoration(
+              color: criterionBg,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              row.criterion,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ),
+        for (var col = 0; col < options.length; col++)
+          DataCell(
+            Container(
+              constraints: const BoxConstraints(minWidth: 170),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              decoration: BoxDecoration(
+                color: col.isEven ? defaultBg : stripe.withOpacity(0.14),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                row.values[options[col]]?.toString() ?? '-',
               ),
             ),
-        ],
-      ),
-      body: _buildBody(),
+          ),
+      ],
     );
   }
 
-  Widget _buildBody() {
-    if (_isGenerating) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 20),
-            Text(
-              'Generating PDF from Comparison Table...',
-              style: TextStyle(fontSize: 16),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'This may take a few seconds',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-          ],
-        ),
-      );
+  _ComparisonTable _normalizeTable(Map<String, dynamic> json) {
+    final rawTable = json['comparisonTable'];
+    if (rawTable is! List) {
+      return const _ComparisonTable(options: [], rows: []);
     }
 
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error, size: 64, color: Colors.red),
-            const SizedBox(height: 20),
-            Text(
-              _error!,
-              style: const TextStyle(fontSize: 16, color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _retryGeneration,
-              child: const Text('Retry PDF Generation'),
-            ),
-          ],
-        ),
-      );
+    final options = <String>{};
+    final rows = <_ComparisonRow>[];
+
+    for (final item in rawTable) {
+      if (item is! Map) continue;
+      final mapped = Map<String, dynamic>.from(item);
+      if (mapped.isEmpty) continue;
+
+      final criterion = mapped.keys.first.toString();
+      final valuesRaw = mapped.values.first;
+      if (valuesRaw is! Map) continue;
+      final values = Map<String, dynamic>.from(valuesRaw);
+      options.addAll(values.keys.map((e) => e.toString()));
+      rows.add(_ComparisonRow(criterion: criterion, values: values));
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: _pdfFile != null
-          ? SfPdfViewer.file(_pdfFile!)
-          : const Center(child: Text('PDF not available')),
+    return _ComparisonTable(
+      options: options.toList(),
+      rows: rows,
     );
   }
+
+  Color _rowStripe(int rowIndex) {
+    const palette = <Color>[
+      Color(0xFF22C55E),
+      Color(0xFF0EA5E9),
+      Color(0xFFF59E0B),
+      Color(0xFFEF4444),
+      Color(0xFF8B5CF6),
+      Color(0xFF14B8A6),
+    ];
+    return palette[rowIndex % palette.length];
+  }
+}
+
+class _ComparisonTable {
+  final List<String> options;
+  final List<_ComparisonRow> rows;
+
+  const _ComparisonTable({
+    required this.options,
+    required this.rows,
+  });
+}
+
+class _ComparisonRow {
+  final String criterion;
+  final Map<String, dynamic> values;
+
+  const _ComparisonRow({
+    required this.criterion,
+    required this.values,
+  });
 }

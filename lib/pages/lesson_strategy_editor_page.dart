@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_lesson_strategies.dart';
 import 'package:sign_education/data/models/lesson_strategy_model.dart';
+import 'package:sign_education/utils/strategy_catalog.dart';
 import 'package:sign_education/utils/strategy_functions.dart';
 
 class LessonStrategyEditorPage extends StatefulWidget {
@@ -25,15 +26,6 @@ class _LessonStrategyEditorPageState extends State<LessonStrategyEditorPage> {
 
   bool _loading = false;
   String? _strategyType;
-
-  static const _supportedStrategies = <Map<String, dynamic>>[
-    {"id": "type_0", "label": "الخرائط الذهنية"},
-    {"id": "type_5", "label": "المخطط الزمني"},
-    {"id": "type_6", "label": "التدرج الهرمي"},
-    {"id": "type_9", "label": "البطاقات الملونة"},
-    {"id": "type_10", "label": "جدول المقارنة"},
-    {"id": "type_11", "label": "المثلث التعليمي"},
-  ];
 
   @override
   void initState() {
@@ -63,6 +55,12 @@ class _LessonStrategyEditorPageState extends State<LessonStrategyEditorPage> {
         return await generateComparisonTableFromText(text);
       case 'type_11':
         return await generateTriangleFromText(text);
+      case 'type_12':
+        return await generatesixHatFromText(text);
+      case 'type_13':
+        return await generateJournalisticQuestionsFromText(text);
+      case 'type_14':
+        return await generateEducationalStoryFromText(text);
       default:
         throw Exception('Unsupported strategy: $type');
     }
@@ -138,15 +136,16 @@ class _LessonStrategyEditorPageState extends State<LessonStrategyEditorPage> {
                         labelText: 'الاستراتيجية',
                         border: OutlineInputBorder(),
                       ),
-                      items: _supportedStrategies
+                      items: StrategyCatalog.all
                           .map(
                             (s) => DropdownMenuItem(
-                              value: s['id'] as String,
-                              child: Text(s['label'] as String),
+                              value: s.id,
+                              child: Text(s.label),
                             ),
                           )
                           .toList(),
-                      onChanged: isEdit ? null : (v) => setState(() => _strategyType = v),
+                      onChanged:
+                          isEdit ? null : (v) => setState(() => _strategyType = v),
                       validator: (v) =>
                           v == null ? 'الرجاء اختيار الاستراتيجية' : null,
                     ),
@@ -167,8 +166,9 @@ class _LessonStrategyEditorPageState extends State<LessonStrategyEditorPage> {
                         alignLabelWithHint: true,
                         border: OutlineInputBorder(),
                       ),
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'أدخل نص الدرس' : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'أدخل نص الدرس'
+                          : null,
                     ),
                     const SizedBox(height: 16),
                     FilledButton.icon(
@@ -183,7 +183,9 @@ class _LessonStrategyEditorPageState extends State<LessonStrategyEditorPage> {
                               ),
                             )
                           : const Icon(Icons.auto_awesome),
-                      label: Text(_loading ? 'جارٍ الإنشاء...' : (isEdit ? 'تحديث' : 'إنشاء')),
+                      label: Text(
+                        _loading ? 'جارٍ الإنشاء...' : (isEdit ? 'تحديث' : 'إنشاء'),
+                      ),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),

@@ -1,8 +1,6 @@
-import 'dart:io';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import 'package:html_to_pdf_plus/html_to_pdf_plus.dart';
 import 'package:sign_education/data/models/user_model.dart';
 
 class InteractiveTriangleView extends StatefulWidget {
@@ -16,271 +14,297 @@ class InteractiveTriangleView extends StatefulWidget {
   });
 
   @override
-  State<InteractiveTriangleView> createState() =>
-      _InteractiveTriangleViewState();
+  State<InteractiveTriangleView> createState() => _InteractiveTriangleViewState();
 }
 
 class _InteractiveTriangleViewState extends State<InteractiveTriangleView> {
-  bool _isGenerating = true;
-  bool _hasGenerated = false;
-  File? _pdfFile;
-  String? _error;
+  static const _sceneSize = Size(980, 760);
+  final _transform = TransformationController();
+  final _viewerKey = GlobalKey();
+  bool _didInitTransform = false;
 
   @override
   void initState() {
     super.initState();
-    if (!_hasGenerated) {
-      _hasGenerated = true;
-      _generatePdfFromHtml();
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initDefaultZoomOut());
   }
 
-  Future<void> _generatePdfFromHtml() async {
-    try {
-      final htmlContent = _generateHtmlContent(widget.triangleJson);
+  void _initDefaultZoomOut() {
+    if (!mounted || _didInitTransform) return;
+    final viewerBox = _viewerKey.currentContext?.findRenderObject() as RenderBox?;
+    final viewport = viewerBox?.size;
+    if (viewport == null || viewport.width <= 0 || viewport.height <= 0) return;
 
-      final dir = await getApplicationDocumentsDirectory();
-      final fileName = _getPdfFileName();
+    final fittedScale = min(
+      viewport.width / _sceneSize.width,
+      viewport.height / _sceneSize.height,
+    );
+    final scale = min(1.0, max(0.78, fittedScale * 0.94));
+    final tx = (viewport.width / 2) - ((_sceneSize.width / 2) * scale);
+    final ty = (viewport.height / 2) - ((_sceneSize.height / 2) * scale);
 
-      // ✅ Convert HTML to PDF
-      final pdfFile = await HtmlToPdf.convertFromHtmlContent(
-        htmlContent: htmlContent,
-        configuration: PdfConfiguration(
-          targetDirectory: dir.path,
-          targetName: fileName,
-          printSize: PrintSize.A4,
-          printOrientation: PrintOrientation.Portrait,
-        ),
-      );
-
-      if (mounted) {
-        setState(() {
-          _pdfFile = pdfFile;
-          _isGenerating = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = 'Failed to generate PDF: $e';
-          _isGenerating = false;
-        });
-      }
-    }
-  }
-
-  String _generateHtmlContent(Map<String, dynamic> data) {
-    final triangleMap = data['triangleMap'] as List<dynamic>? ?? [];
-    final title = data['title'] ?? 'المثلث التعليمي';
-    final desc = data['description'] ?? '';
-
-    // Ensure we have 3 corners minimum
-    while (triangleMap.length < 3) {
-      triangleMap.add({
-        "corner": "زاوية",
-        "title": "",
-        "description": "",
-        "examples": [],
-        "color": "#3b82f6",
-      });
-    }
-
-    final top = triangleMap[0];
-    final left = triangleMap[1];
-    final right = triangleMap[2];
-
-    String buildCorner(Map item) {
-      final examples =
-          (item['examples'] as List?)
-              ?.take(4)
-              .map((e) => '<li>$e</li>')
-              .join('') ??
-          '';
-      return '''
-      <div class="corner" style="background:${item['color'] ?? '#3b82f6'}">
-        <div class="title">${item['title'] ?? item['corner'] ?? ''}</div>
-        <div class="desc">${item['description'] ?? ''}</div>
-        <ul>$examples</ul>
-      </div>
-      ''';
-    }
-
-    return '''
-<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-<meta charset="utf-8"/>
-<title>$title</title>
-<style>
-  body {
-    font-family: 'Cairo', sans-serif;
-    background: #fff;
-    color: #1e293b;
-    direction: rtl;
-    padding: 40px;
-    text-align: center;
-  }
-  h1 {
-    color: #1e3a8a;
-    margin-bottom: 16px;
-    border-bottom: 3px solid #3b82f6;
-    padding-bottom: 8px;
-  }
-  p.desc {
-    font-size: 16px;
-    color: #475569;
-    margin-bottom: 30px;
-  }
-  .triangle-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    width: 600px;
-    height: 520px;
-    margin: auto;
-  }
-  .triangle-svg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 0;
-    pointer-events: none;
-  }
-  .corner {
-    position: absolute;
-    width: 260px;
-    padding: 16px;
-    border-radius: 12px;
-    color: white;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    text-align: right;
-    z-index: 2;
-  }
-  .corner .title {
-    font-weight: bold;
-    font-size: 18px;
-    margin-bottom: 6px;
-  }
-  .corner ul {
-    padding-right: 16px;
-  }
-  .top { top: 0; left: 50%; transform: translateX(-50%); }
-  .left { bottom: 0; left: 0; }
-  .right { bottom: 0; right: 0; }
-  .footer {
-    margin-top: 40px;
-    font-size: 14px;
-    color: #64748b;
-  }
-</style>
-</head>
-<body>
-  <h1>$title</h1>
-  <p class="desc">$desc</p>
-
-  <div class="triangle-container">
-    <svg class="triangle-svg" viewBox="0 0 600 520" preserveAspectRatio="none">
-      <line x1="300" y1="45" x2="85" y2="495" stroke="#93c5fd" stroke-width="4"/>
-      <line x1="300" y1="45" x2="515" y2="495" stroke="#93c5fd" stroke-width="4"/>
-      <line x1="85" y1="495" x2="515" y2="495" stroke="#93c5fd" stroke-width="4"/>
-    </svg>
-    <div class="corner top">${buildCorner(top)}</div>
-    <div class="corner left">${buildCorner(left)}</div>
-    <div class="corner right">${buildCorner(right)}</div>
-  </div>
-
-  <div class="footer">تم إنشاؤه بواسطة Sign Education</div>
-</body>
-</html>
-''';
-  }
-
-  String _getPdfFileName() {
-    final title = widget.triangleJson['title'] ?? 'EducationalTriangle';
-    final sanitized = title.toString().replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-    return '$sanitized.pdf';
-  }
-
-  void _retryGeneration() {
-    setState(() {
-      _isGenerating = true;
-      _error = null;
-    });
-    _generatePdfFromHtml();
+    _transform.value = Matrix4.identity()
+      ..translate(tx, ty)
+      ..scale(scale);
+    _didInitTransform = true;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Generating Educational Triangle PDF'),
-        actions: [
-          if (_isGenerating)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+    final title = (widget.triangleJson['title'] ?? 'المثلث التعليمي').toString();
+    final description = (widget.triangleJson['description'] ?? '').toString();
+    final corners = _normalizeCorners(widget.triangleJson);
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(title),
+          centerTitle: true,
+        ),
+        body: Column(
+          children: [
+            if (description.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withOpacity(0.45),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    description,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              ),
+            Expanded(
+              child: InteractiveViewer(
+                key: _viewerKey,
+                transformationController: _transform,
+                minScale: 0.6,
+                maxScale: 2.4,
+                panEnabled: true,
+                scaleEnabled: true,
+                constrained: false,
+                boundaryMargin: const EdgeInsets.all(800),
+                child: SizedBox(
+                  width: _sceneSize.width,
+                  height: _sceneSize.height,
+                  child: Stack(
+                    children: [
+                      const Positioned.fill(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 120,
+                            vertical: 85,
+                          ),
+                          child: CustomPaint(
+                            painter: _TriangleLinePainter(),
+                          ),
+                        ),
+                      ),
+                      _CornerCard(
+                        alignment: const Alignment(0, -0.92),
+                        data: corners[0],
+                        width: 300,
+                        color: corners[0].color,
+                      ),
+                      _CornerCard(
+                        alignment: const Alignment(-0.90, 0.88),
+                        data: corners[1],
+                        width: 295,
+                        color: corners[1].color,
+                      ),
+                      _CornerCard(
+                        alignment: const Alignment(0.90, 0.88),
+                        data: corners[2],
+                        width: 295,
+                        color: corners[2].color,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-        ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              child: Text(
+                'يمكنك السحب والتكبير. تم ترك مسافة واضحة بين البطاقات وخطوط المثلث.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          ],
+        ),
       ),
-      body: _buildBody(),
     );
   }
 
-  Widget _buildBody() {
-    if (_isGenerating) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 20),
-            Text(
-              'Generating Educational Triangle PDF...',
-              style: TextStyle(fontSize: 16),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'This may take a few seconds',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+  List<_TriangleCorner> _normalizeCorners(Map<String, dynamic> data) {
+    final raw = (data['triangleMap'] as List? ?? const []).toList();
+    while (raw.length < 3) {
+      raw.add({
+        'corner': 'زاوية',
+        'title': '',
+        'description': '',
+        'examples': <dynamic>[],
+        'color': '#3b82f6',
+      });
+    }
+
+    return raw.take(3).map((item) {
+      final map = Map<String, dynamic>.from(item as Map);
+      final title = (map['title']?.toString().trim().isNotEmpty ?? false)
+          ? map['title'].toString()
+          : (map['corner']?.toString() ?? 'زاوية');
+      final description = (map['description'] ?? '').toString();
+      final examples = (map['examples'] as List? ?? const [])
+          .map((e) => e.toString())
+          .where((e) => e.trim().isNotEmpty)
+          .toList();
+      final color = _parseHexColor(map['color']?.toString() ?? '#3b82f6');
+      return _TriangleCorner(
+        title: title,
+        description: description,
+        examples: examples,
+        color: color,
+      );
+    }).toList();
+  }
+
+  Color _parseHexColor(String input) {
+    var hex = input.replaceAll('#', '').trim();
+    if (hex.length == 6) hex = 'FF$hex';
+    try {
+      return Color(int.parse('0x$hex'));
+    } catch (_) {
+      return const Color(0xFF3B82F6);
+    }
+  }
+}
+
+class _TriangleLinePainter extends CustomPainter {
+  const _TriangleLinePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.2
+      ..strokeCap = StrokeCap.round;
+
+    final top = Offset(size.width / 2, 70);
+    final left = Offset(130, size.height - 95);
+    final right = Offset(size.width - 130, size.height - 95);
+
+    canvas.drawLine(top, left, paint);
+    canvas.drawLine(top, right, paint);
+    canvas.drawLine(left, right, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TriangleLinePainter oldDelegate) => false;
+}
+
+class _CornerCard extends StatelessWidget {
+  final Alignment alignment;
+  final _TriangleCorner data;
+  final double width;
+  final Color color;
+
+  const _CornerCard({
+    required this.alignment,
+    required this.data,
+    required this.width,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final onColor = ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+        ? Colors.white
+        : Colors.black;
+
+    return Align(
+      alignment: alignment,
+      child: Container(
+        width: width,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x22000000),
+              blurRadius: 9,
+              offset: Offset(0, 4),
             ),
           ],
         ),
-      );
-    }
-
-    if (_error != null) {
-      return Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(Icons.error, size: 64, color: Colors.red),
-            const SizedBox(height: 20),
             Text(
-              _error!,
-              style: const TextStyle(fontSize: 16, color: Colors.red),
+              data.title,
               textAlign: TextAlign.center,
+              style: TextStyle(
+                color: onColor,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+              ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _retryGeneration,
-              child: const Text('Retry PDF Generation'),
-            ),
+            if (data.description.trim().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                data.description,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: onColor.withOpacity(0.95),
+                  height: 1.35,
+                ),
+              ),
+            ],
+            if (data.examples.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              for (var i = 0; i < min(4, data.examples.length); i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    '• ${data.examples[i]}',
+                    style: TextStyle(
+                      color: onColor.withOpacity(0.95),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
           ],
         ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: _pdfFile != null
-          ? SfPdfViewer.file(_pdfFile!)
-          : const Center(child: Text('PDF not available')),
+      ),
     );
   }
 }
+
+class _TriangleCorner {
+  final String title;
+  final String description;
+  final List<String> examples;
+  final Color color;
+
+  const _TriangleCorner({
+    required this.title,
+    required this.description,
+    required this.examples,
+    required this.color,
+  });
+}
+

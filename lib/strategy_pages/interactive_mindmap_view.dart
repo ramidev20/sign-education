@@ -29,12 +29,14 @@ class _InteractiveMindMapViewState extends State<InteractiveMindMapView> {
 
   late Map<String, dynamic> _root;
   late Size _canvasSize;
+  late Map<String, int> _depthById;
 
   @override
   void initState() {
     super.initState();
     _root = _normalizeMindMap(Map<String, dynamic>.from(widget.mindMapJson));
     _layoutTree();
+    _depthById = _buildDepthMap(_root);
     WidgetsBinding.instance.addPostFrameCallback((_) => _fitInView());
   }
 
@@ -78,6 +80,19 @@ class _InteractiveMindMapViewState extends State<InteractiveMindMapView> {
     for (final child in _children(node)) {
       yield* _walk(child);
     }
+  }
+
+  Map<String, int> _buildDepthMap(Map<String, dynamic> root) {
+    final map = <String, int>{};
+    void walk(Map<String, dynamic> node, int depth) {
+      map[node['id']?.toString() ?? ''] = depth;
+      for (final c in _children(node)) {
+        walk(c, depth + 1);
+      }
+    }
+
+    walk(root, 0);
+    return map;
   }
 
   int _maxDepth(Map<String, dynamic> node, [int depth = 0]) {
@@ -167,90 +182,90 @@ class _InteractiveMindMapViewState extends State<InteractiveMindMapView> {
   void _fitInView() {
     if (!mounted) return;
     final viewerBox = _viewerKey.currentContext?.findRenderObject() as RenderBox?;
-    final viewport = viewerBox?.size ?? context.size;
-    if (viewport == null || viewport.width <= 0 || viewport.height <= 0) return;
+    final viewport = viewerBox?.size ?? context.size ?? const Size(800, 600);
+    final bounds = _treeBounds().inflate(20);
 
-    final bounds = _treeBounds().inflate(40);
-    const horizontalPadding = 24.0;
-    const topPadding = 20.0;
-    const bottomPadding = 86.0;
+    final scaleX = viewport.width / bounds.width;
+    final scaleY = viewport.height / bounds.height;
+    final scale = min(1.0, min(scaleX, scaleY));
+    final clamped = max(0.70, scale * 0.95);
 
-    final availableWidth = max(1.0, viewport.width - (horizontalPadding * 2));
-    final availableHeight = max(1.0, viewport.height - topPadding - bottomPadding);
-
-    final scaleX = availableWidth / bounds.width;
-    final scaleY = availableHeight / bounds.height;
-    final scale = min(1.0, max(0.33, min(scaleX, scaleY)));
-
-    final tx = ((horizontalPadding + (availableWidth / 2)) -
-        ((bounds.left + bounds.width / 2) * scale));
-    final ty =
-        ((topPadding + (availableHeight / 2)) - ((bounds.top + bounds.height / 2) * scale));
+    final dx = (viewport.width / 2) - (bounds.center.dx * clamped);
+    final dy = (viewport.height / 2) - (bounds.center.dy * clamped);
 
     _transform.value = Matrix4.identity()
-      ..translate(tx, ty)
-      ..scale(scale);
+      ..translate(dx, dy)
+      ..scale(clamped);
+  }
+
+  Color _accentForDepth(int depth, ColorScheme cs) {
+    if (depth <= 0) return cs.primary;
+    final base = HSLColor.fromColor(cs.primary);
+    final hue = (base.hue + (depth * 34)) % 360;
+    return base.withHue(hue).withSaturation(0.58).withLightness(0.48).toColor();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final title = (_root['content'] ?? 'الخريطة الذهنية').toString();
+    final cs = Theme.of(context).colorScheme;
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(title),
+          title: const Text('الخريطة الذهنية'),
           centerTitle: true,
-          actions: [
-            IconButton(
-              tooltip: 'ضبط العرض',
-              onPressed: _fitInView,
-              icon: const Icon(Icons.center_focus_strong),
-            ),
-          ],
         ),
         body: Stack(
           children: [
-            InteractiveViewer(
+            Positioned.fill(
               key: _viewerKey,
-              transformationController: _transform,
-              constrained: false,
-              clipBehavior: Clip.none,
-              boundaryMargin: const EdgeInsets.all(600),
-              minScale: 0.25,
-              maxScale: 2.8,
-              child: SizedBox(
-                width: _canvasSize.width,
-                height: _canvasSize.height,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Positioned.fill(
-                      child: CustomPaint(
-                        painter: _MindMapEdgesPainter(
-                          root: _root,
-                          nodePos: _nodePos,
-                          childrenOf: _children,
-                          color: cs.primary.withOpacity(0.55),
+              child: InteractiveViewer(
+                transformationController: _transform,
+                constrained: false,
+                boundaryMargin: const EdgeInsets.all(1200),
+                clipBehavior: Clip.none,
+                panEnabled: true,
+                scaleEnabled: true,
+                minScale: 0.25,
+                maxScale: 3.1,
+                child: SizedBox(
+                  width: _canvasSize.width,
+                  height: _canvasSize.height,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: _MindMapEdgesPainter(
+                            root: _root,
+                            nodePos: _nodePos,
+                            childrenOf: _children,
+                            nodeSize: _nodeSize,
+                          ),
                         ),
                       ),
-                    ),
-                    for (final node in _walk(_root))
-                      Positioned(
-                        left: _nodePos(node).dx - (_nodeSize.width / 2),
-                        top: _nodePos(node).dy - (_nodeSize.height / 2),
-                        width: _nodeSize.width,
-                        height: _nodeSize.height,
-                        child: _MindMapNodeCard(
-                          title: node['content']?.toString() ?? '',
-                          level: _nodeLevel(node['id']?.toString() ?? '', _root),
-                          isRoot: node['id']?.toString() == (_root['id']?.toString() ?? 'root'),
+                      for (final node in _walk(_root))
+                        Positioned(
+                          left: _nodePos(node).dx - (_nodeSize.width / 2),
+                          top: _nodePos(node).dy - (_nodeSize.height / 2),
+                          width: _nodeSize.width,
+                          height: _nodeSize.height,
+                          child: Builder(
+                            builder: (context) {
+                              final id = node['id']?.toString() ?? '';
+                              final depth = _depthById[id] ?? 0;
+                              final accent = _accentForDepth(depth, cs);
+                              return _MindMapNodeCard(
+                                title: node['content']?.toString() ?? '',
+                                isRoot: depth == 0,
+                                accent: accent,
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -266,7 +281,7 @@ class _InteractiveMindMapViewState extends State<InteractiveMindMapView> {
                   border: Border.all(color: cs.outlineVariant),
                 ),
                 child: const Text(
-                  'عرض شجري للخريطة الذهنية. يمكنك التكبير/التصغير والسحب لتحريك المخطط.',
+                  'يمكنك التكبير والتصغير والسحب لاستكشاف الخريطة.',
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -276,57 +291,50 @@ class _InteractiveMindMapViewState extends State<InteractiveMindMapView> {
       ),
     );
   }
-
-  int _nodeLevel(String id, Map<String, dynamic> node, [int depth = 1]) {
-    if (node['id']?.toString() == id) return depth;
-    for (final child in _children(node)) {
-      final found = _nodeLevel(id, child, depth + 1);
-      if (found != -1) return found;
-    }
-    return -1;
-  }
 }
 
 class _MindMapNodeCard extends StatelessWidget {
   final String title;
-  final int level;
   final bool isRoot;
+  final Color accent;
 
   const _MindMapNodeCard({
     required this.title,
-    required this.level,
     required this.isRoot,
+    required this.accent,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final bg = isRoot
+        ? accent
+        : Color.alphaBlend(accent.withOpacity(0.48), cs.surface);
+    final fg = isRoot ? cs.onPrimary : cs.onSurface;
 
     return Material(
-      color: cs.surface,
+      color: bg,
       elevation: 2,
       borderRadius: BorderRadius.circular(14),
-      child: Padding(
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isRoot ? Colors.transparent : accent.withOpacity(0.38),
+          ),
+        ),
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              isRoot ? 'الجذر' : 'المستوى ${max(1, level)}',
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: cs.primary,
-                fontWeight: FontWeight.w800,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 6),
             Expanded(
               child: Text(
                 title,
                 maxLines: 4,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium?.copyWith(
+                  color: fg,
                   fontWeight: FontWeight.w700,
                 ),
                 textAlign: TextAlign.center,
@@ -343,27 +351,40 @@ class _MindMapEdgesPainter extends CustomPainter {
   final Map<String, dynamic> root;
   final Offset Function(Map<String, dynamic> node) nodePos;
   final List<Map<String, dynamic>> Function(Map<String, dynamic> node) childrenOf;
-  final Color color;
+  final Size nodeSize;
 
   _MindMapEdgesPainter({
     required this.root,
     required this.nodePos,
     required this.childrenOf,
-    required this.color,
+    required this.nodeSize,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2;
-
     void walk(Map<String, dynamic> parent) {
       final parentPos = nodePos(parent);
       for (final child in childrenOf(parent)) {
         final childPos = nodePos(child);
-        canvas.drawLine(parentPos, childPos, paint);
+        final paint = Paint()
+          ..color = Colors.black.withOpacity(0.62)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.1;
+
+        // Draw connectors outside card bounds so edges do not cut through text.
+        final start = Offset(
+          parentPos.dx,
+          parentPos.dy + (nodeSize.height / 2) - 2,
+        );
+        final end = Offset(
+          childPos.dx,
+          childPos.dy - (nodeSize.height / 2) + 2,
+        );
+        final midY = (start.dy + end.dy) / 2;
+        final path = Path()
+          ..moveTo(start.dx, start.dy)
+          ..cubicTo(start.dx, midY, end.dx, midY, end.dx, end.dy);
+        canvas.drawPath(path, paint);
         walk(child);
       }
     }
@@ -373,6 +394,6 @@ class _MindMapEdgesPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _MindMapEdgesPainter oldDelegate) {
-    return oldDelegate.root != root || oldDelegate.color != color;
+    return oldDelegate.root != root;
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_lesson_strategies.dart';
 import 'package:sign_education/data/models/lesson_model.dart';
@@ -8,6 +10,8 @@ import 'package:sign_education/pages/lesson_strategy_viewer.dart';
 import 'package:sign_education/pages/lesson_edit_page.dart';
 import 'package:sign_education/pages/strategy_json_editor_page.dart';
 import 'package:sign_education/pages/strategy_visual_editor_router.dart';
+import 'package:sign_education/utils/offline_lesson_cache.dart';
+import 'package:sign_education/utils/offline_strategy_cache.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 class LessonViewPage extends StatefulWidget {
@@ -23,6 +27,7 @@ class LessonViewPage extends StatefulWidget {
 class _LessonViewPageState extends State<LessonViewPage> {
   late LessonModel _lesson;
   late Future<List<LessonStrategyModel>> _strategiesFuture;
+  bool _savingOffline = false;
 
   bool get _isStudent => widget.user.role == 'student';
 
@@ -120,16 +125,109 @@ class _LessonViewPageState extends State<LessonViewPage> {
     await DbHelperLessonStrategies.deleteStrategy(strategy.lessonStrategyId);
     if (mounted) await _refreshStrategies();
   }
+  Future<void> _saveLessonOffline() async {
+    final lessonId = _lesson.lessonId;
+    if (lessonId == null || lessonId.isEmpty) return;
 
-  void _openLessonPdf() {
-    if (_lesson.fileUrl == null || _lesson.fileUrl!.isEmpty) return;
+    setState(() => _savingOffline = true);
+    try {
+      await OfflineLessonCache.saveLessonMetadata(_lesson);
+      final strategies = await _fetchStrategies();
+      await OfflineStrategyCache.writeStrategies(
+        lessonId: lessonId,
+        strategies: strategies,
+      );
+
+      File? cachedPdf;
+      if (_lesson.fileUrl != null && _lesson.fileUrl!.isNotEmpty) {
+        cachedPdf = await OfflineLessonCache.cacheLessonPdf(
+          lessonId: lessonId,
+          fileUrl: _lesson.fileUrl!,
+        );
+      }
+
+      if (!mounted) return;
+      final pdfMsg = cachedPdf != null ? ' + ??? ?????' : '';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '?? ??? ????? ???? ?????? (${strategies.length} ??????????$pdfMsg)',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('???? ????? ???? ??????: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _savingOffline = false);
+    }
+  }
+
+  Future<void> _openLessonPdf() async {
+    final lessonId = _lesson.lessonId;
+    if (lessonId != null && lessonId.isNotEmpty) {
+      final cached = await OfflineLessonCache.getCachedLessonPdfFile(lessonId);
+      if (cached != null) {
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => Scaffold(
+              appBar: AppBar(
+                title: Text(_lesson.title ?? '???'),
+                centerTitle: true,
+              actions: [
+                IconButton(
+                  tooltip: 'Save Offline',
+                  onPressed: _savingOffline ? null : _saveLessonOffline,
+                  icon: _savingOffline
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.download_for_offline_outlined),
+                ),
+              ],
+              ),
+              body: SfPdfViewer.file(cached),
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
+    if (_lesson.fileUrl == null || _lesson.fileUrl!.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('?? ???? ??? ??? ????')),
+      );
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => Scaffold(
           appBar: AppBar(
-            title: Text(_lesson.title ?? 'درس'),
+            title: Text(_lesson.title ?? '???'),
             centerTitle: true,
+          actions: [
+            IconButton(
+              tooltip: 'Save Offline',
+              onPressed: _savingOffline ? null : _saveLessonOffline,
+              icon: _savingOffline
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.download_for_offline_outlined),
+            ),
+          ],
           ),
           body: SfPdfViewer.network(_lesson.fileUrl!),
         ),
@@ -148,6 +246,19 @@ class _LessonViewPageState extends State<LessonViewPage> {
               appBar: AppBar(
                 title: Text(_lesson.title ?? 'درس'),
                 centerTitle: true,
+              actions: [
+                IconButton(
+                  tooltip: 'Save Offline',
+                  onPressed: _savingOffline ? null : _saveLessonOffline,
+                  icon: _savingOffline
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.download_for_offline_outlined),
+                ),
+              ],
               ),
               body: FutureBuilder<List<LessonStrategyModel>>(
                 future: _strategiesFuture,
@@ -193,20 +304,7 @@ class _LessonViewPageState extends State<LessonViewPage> {
                             title: 'الدرس (PDF)',
                             subtitle: 'المحتوى الأساسي',
                             icon: Icons.picture_as_pdf_outlined,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => Scaffold(
-                                    appBar: AppBar(
-                                      title: Text(_lesson.title ?? 'درس'),
-                                      centerTitle: true,
-                                    ),
-                                    body: SfPdfViewer.network(_lesson.fileUrl!),
-                                  ),
-                                ),
-                              );
-                            },
+                            onTap: () => _openLessonPdf(),
                           );
                         }
 
@@ -232,6 +330,19 @@ class _LessonViewPageState extends State<LessonViewPage> {
               appBar: AppBar(
                 title: Text(_lesson.title ?? 'درس'),
                 centerTitle: true,
+              actions: [
+                IconButton(
+                  tooltip: 'Save Offline',
+                  onPressed: _savingOffline ? null : _saveLessonOffline,
+                  icon: _savingOffline
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.download_for_offline_outlined),
+                ),
+              ],
               ),
               body: FutureBuilder<List<LessonStrategyModel>>(
                 future: _strategiesFuture,

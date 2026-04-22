@@ -221,7 +221,8 @@ class _MindMapEditorPageState extends State<MindMapEditorPage> {
 
     final scaleX = availableWidth / bounds.width;
     final scaleY = availableHeight / bounds.height;
-    final scale = min(1.0, max(0.35, min(scaleX, scaleY)));
+    final fitted = min(scaleX, scaleY);
+    final scale = min(1.15, max(0.40, fitted * 1.08));
 
     final tx =
         ((horizontalPadding + (availableWidth / 2)) -
@@ -410,7 +411,7 @@ class _MindMapEditorPageState extends State<MindMapEditorPage> {
                           nodePos: _nodePos,
                           linkFromId: _linkFromId,
                           linkToScene: _linkToScene,
-                          color: cs.primary.withOpacity(0.6),
+                          color: Colors.black.withOpacity(0.62),
                         ),
                       ),
                     ),

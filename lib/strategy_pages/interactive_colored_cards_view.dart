@@ -1,17 +1,12 @@
-import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/models/user_model.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 class InteractiveColoredCardsView extends StatefulWidget {
   final Map<String, dynamic> cardsJson;
   final UserModel user;
+
   const InteractiveColoredCardsView({
     super.key,
     required this.cardsJson,
@@ -23,245 +18,234 @@ class InteractiveColoredCardsView extends StatefulWidget {
       _InteractiveColoredCardsViewState();
 }
 
-class _InteractiveColoredCardsViewState
-    extends State<InteractiveColoredCardsView> {
-  bool _isGenerating = true;
-  File? _pdfFile;
-  String? _error;
-  late WebViewController _controller;
+class _InteractiveColoredCardsViewState extends State<InteractiveColoredCardsView> {
+  static const _sceneSize = Size(1120, 840);
+  final _transform = TransformationController();
+  final _viewerKey = GlobalKey();
+  bool _didInitTransform = false;
 
   @override
   void initState() {
     super.initState();
-    _generatePdfFromCanvas();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initDefaultZoomOut());
   }
 
-  void _generatePdfFromCanvas() {
-    final jsonStr = jsonEncode(widget.cardsJson);
-    final html = _htmlTemplate.replaceFirst('{{CARDS_JSON}}', jsonStr);
+  void _initDefaultZoomOut() {
+    if (!mounted || _didInitTransform) return;
+    final viewerBox = _viewerKey.currentContext?.findRenderObject() as RenderBox?;
+    final viewport = viewerBox?.size;
+    if (viewport == null || viewport.width <= 0 || viewport.height <= 0) return;
 
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..addJavaScriptChannel(
-        'FlutterChannel',
-        onMessageReceived: (msg) async {
-          _handleImageExport(msg.message);
-        },
-      )
-      ..addJavaScriptChannel(
-        'ErrorChannel',
-        onMessageReceived: (msg) {
-          setState(() {
-            _error = 'Export error: ${msg.message}';
-            _isGenerating = false;
-          });
-        },
-      )
-      ..setNavigationDelegate(
-        NavigationDelegate(onPageFinished: (_) => _triggerPdfGeneration()),
-      )
-      ..loadHtmlString(html);
-  }
-
-  void _triggerPdfGeneration() {
-    _controller.runJavaScript('''
-      setTimeout(() => {
-        try {
-          exportAsImage();
-        } catch (error) {
-          ErrorChannel.postMessage(error.toString());
-        }
-      }, 600);
-    ''');
-  }
-
-  Future<void> _handleImageExport(String imgBase64) async {
-    try {
-      final imageBytes = base64Decode(imgBase64.split(',').last);
-      final pdfFile = await _generatePdf(imageBytes);
-
-      setState(() {
-        _pdfFile = pdfFile;
-        _isGenerating = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = 'Failed to export PDF: $e';
-        _isGenerating = false;
-      });
-    }
-  }
-
-  Future<File> _generatePdf(Uint8List imageBytes) async {
-    final pdf = pw.Document();
-
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          final image = pw.MemoryImage(imageBytes);
-          return pw.Container(
-            margin: const pw.EdgeInsets.all(20),
-            child: pw.Center(
-              child: pw.FittedBox(
-                fit: pw.BoxFit.contain,
-                child: pw.Image(image),
-              ),
-            ),
-          );
-        },
-      ),
+    final fittedScale = min(
+      viewport.width / _sceneSize.width,
+      viewport.height / _sceneSize.height,
     );
+    final scale = min(1.0, max(0.76, fittedScale * 0.93));
+    final tx = (viewport.width / 2) - ((_sceneSize.width / 2) * scale);
+    final ty = (viewport.height / 2) - ((_sceneSize.height / 2) * scale);
 
-    final dir = await getApplicationDocumentsDirectory();
-    final fileName = _getPdfFileName();
-    final file = File('${dir.path}/$fileName');
-    await file.writeAsBytes(await pdf.save());
-    return file;
-  }
-
-  String _getPdfFileName() {
-    final title = widget.cardsJson['title'] ?? 'ConceptCards';
-    final sanitized = title.toString().replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-    return '$sanitized.pdf';
-  }
-
-  void _retryGeneration() {
-    setState(() {
-      _isGenerating = true;
-      _error = null;
-    });
-    _triggerPdfGeneration();
+    _transform.value = Matrix4.identity()
+      ..translate(tx, ty)
+      ..scale(scale);
+    _didInitTransform = true;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Generating Colored Concept Cards PDF'),
-        actions: [
-          if (_isGenerating)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-        ],
+    final title = (widget.cardsJson['title'] ?? 'البطاقات الملونة').toString();
+    final cards = _normalizeCards(widget.cardsJson);
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(title),
+          centerTitle: true,
+        ),
+        body: cards.isEmpty
+            ? const Center(child: Text('لا توجد بطاقات للعرض'))
+            : InteractiveViewer(
+                key: _viewerKey,
+                transformationController: _transform,
+                minScale: 0.55,
+                maxScale: 2.6,
+                panEnabled: true,
+                scaleEnabled: true,
+                constrained: false,
+                boundaryMargin: const EdgeInsets.all(1000),
+                child: SizedBox(
+                  width: _sceneSize.width,
+                  height: _sceneSize.height,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Theme.of(context).colorScheme.surface,
+                                Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.25),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      for (var index = 0; index < cards.length; index++)
+                        _PositionedConceptCard(
+                          data: cards[index],
+                          index: index,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
       ),
-      body: _buildBody(),
     );
   }
 
-  Widget _buildBody() {
-    if (_isGenerating) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Generating Colored Cards...'),
-          ],
-        ),
+  List<_ConceptCardData> _normalizeCards(Map<String, dynamic> json) {
+    final raw = json['conceptCards'];
+    if (raw is! List) return const [];
+    return raw.whereType<Map>().map((item) {
+      final map = Map<String, dynamic>.from(item);
+      return _ConceptCardData(
+        title: (map['title'] ?? '').toString(),
+        type: (map['type'] ?? '').toString(),
+        content: (map['content'] ?? '').toString(),
+        color: _parseHexColor(map['color']?.toString() ?? '#3b82f6'),
       );
-    }
+    }).toList();
+  }
 
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error, color: Colors.red, size: 64),
-            const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _retryGeneration,
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
+  Color _parseHexColor(String input) {
+    var hex = input.replaceAll('#', '').trim();
+    if (hex.length == 6) hex = 'FF$hex';
+    try {
+      return Color(int.parse('0x$hex'));
+    } catch (_) {
+      return const Color(0xFF3B82F6);
     }
-
-    return _pdfFile != null
-        ? SfPdfViewer.file(_pdfFile!)
-        : const Center(child: Text('PDF not ready'));
   }
 }
 
-const String _htmlTemplate = r'''
-<!DOCTYPE html>
-<html dir="rtl">
-<head>
-<meta charset="utf-8"/>
-<title>Colored Concept Cards</title>
-<style>
-  body {
-    margin: 0;
-    font-family: "Segoe UI", Tahoma, sans-serif;
-    background: white;
-  }
-  #grid {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    padding: 40px;
-    gap: 20px;
-  }
-  .card {
-    width: 240px;
-    border-radius: 16px;
-    padding: 16px;
-    color: white;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-  }
-  .title {
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 8px;
-  }
-  .type {
-    font-size: 14px;
-    opacity: 0.85;
-    margin-bottom: 12px;
-  }
-  .content {
-    font-size: 16px;
-    line-height: 1.4;
-  }
-</style>
-</head>
-<body>
-<div id="grid"></div>
+class _PositionedConceptCard extends StatelessWidget {
+  final _ConceptCardData data;
+  final int index;
 
-<script>
-  const data = {{CARDS_JSON}}.conceptCards || [];
-  const grid = document.getElementById('grid');
-
-  data.forEach(item => {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.style.backgroundColor = item.color || '#60A5FA';
-    card.innerHTML = `
-      <div class="title">${item.title}</div>
-      <div class="type">${item.type}</div>
-      <div class="content">${item.content}</div>
-    `;
-    grid.appendChild(card);
+  const _PositionedConceptCard({
+    required this.data,
+    required this.index,
   });
 
-  async function exportAsImage() {
-    const canvas = await html2canvas(document.body, { scale: 2 });
-    FlutterChannel.postMessage(canvas.toDataURL('image/png'));
-  }
+  @override
+  Widget build(BuildContext context) {
+    const columns = 3;
+    final row = index ~/ columns;
+    final col = index % columns;
+    const cardW = 300.0;
+    const cardH = 210.0;
+    const startX = 70.0;
+    const startY = 60.0;
+    const gapX = 350.0;
+    const gapY = 240.0;
 
-  window.onload = () => exportAsImage();
-</script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-</body>
-</html>
-''';
+    final left = startX + (col * gapX) + (row.isOdd ? 28 : 0);
+    final top = startY + (row * gapY);
+
+    return Positioned(
+      left: left,
+      top: top,
+      width: cardW,
+      height: cardH,
+      child: _ConceptCardTile(data: data),
+    );
+  }
+}
+
+class _ConceptCardData {
+  final String title;
+  final String type;
+  final String content;
+  final Color color;
+
+  const _ConceptCardData({
+    required this.title,
+    required this.type,
+    required this.content,
+    required this.color,
+  });
+}
+
+class _ConceptCardTile extends StatelessWidget {
+  final _ConceptCardData data;
+
+  const _ConceptCardTile({
+    required this.data,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final onColor = ThemeData.estimateBrightnessForColor(data.color) == Brightness.dark
+        ? Colors.white
+        : Colors.black;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: data.color,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 9,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            data.title.trim().isEmpty ? 'بطاقة' : data.title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: onColor,
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (data.type.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              data.type,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: onColor.withOpacity(0.94),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Text(
+                data.content.trim().isEmpty ? '-' : data.content,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: onColor.withOpacity(0.95),
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

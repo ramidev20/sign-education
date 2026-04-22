@@ -9,6 +9,7 @@ import 'package:sign_education/pages/lesson_create_page.dart';
 import 'package:sign_education/pages/lesson_strategies_info_page.dart';
 import 'package:sign_education/pages/lesson_view_page.dart';
 import 'package:sign_education/utils/app_theme.dart';
+import 'package:sign_education/utils/offline_lesson_cache.dart';
 import 'package:sign_education/widgets/app_state.dart';
 
 class LessonsPage extends StatefulWidget {
@@ -270,6 +271,51 @@ class _TeacherLessonsArchive extends StatefulWidget {
 
 class _TeacherLessonsArchiveState extends State<_TeacherLessonsArchive> {
   String? _selectedSubject;
+  late Future<_ArchiveLessonsResult> _archiveFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _archiveFuture = _loadArchiveLessons();
+  }
+
+  Future<_ArchiveLessonsResult> _loadArchiveLessons() async {
+    try {
+      final lessons = await DbHelperLessons.getLessonsByTeacher(widget.user.id);
+      return _ArchiveLessonsResult(lessons: lessons, isOffline: false);
+    } catch (e) {
+      final cached = await OfflineLessonCache.getSavedLessonsByTeacher(
+        widget.user.id,
+      );
+      if (cached.isNotEmpty) {
+        return _ArchiveLessonsResult(
+          lessons: cached,
+          isOffline: true,
+          onlineError: '$e',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  void _retryLoad() {
+    setState(() {
+      _archiveFuture = _loadArchiveLessons();
+    });
+  }
+
+  Widget _withOfflineBanner(_ArchiveLessonsResult result, Widget child) {
+    if (!result.isOffline) return child;
+    return Column(
+      children: [
+        _OfflineArchiveBanner(
+          onRefreshOnline: _retryLoad,
+          errorText: result.onlineError,
+        ),
+        Expanded(child: child),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -277,8 +323,8 @@ class _TeacherLessonsArchiveState extends State<_TeacherLessonsArchive> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(title: const Text('أرشيف الدروس')),
-        body: FutureBuilder<List<LessonModel>>(
-          future: DbHelperLessons.getLessonsByTeacher(widget.user.id),
+        body: FutureBuilder<_ArchiveLessonsResult>(
+          future: _archiveFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const AppLoading();
@@ -288,11 +334,12 @@ class _TeacherLessonsArchiveState extends State<_TeacherLessonsArchive> {
                 title: 'تعذر تحميل الأرشيف',
                 message: snapshot.error?.toString(),
                 actionLabel: 'إعادة المحاولة',
-                onAction: () => (context as Element).markNeedsBuild(),
+                onAction: _retryLoad,
               );
             }
 
-            final lessons = snapshot.data ?? [];
+            final result = snapshot.data!;
+            final lessons = result.lessons;
             if (lessons.isEmpty) {
               return const AppEmptyState(
                 icon: Icons.archive_outlined,
@@ -302,16 +349,16 @@ class _TeacherLessonsArchiveState extends State<_TeacherLessonsArchive> {
 
             if (_selectedSubject == null) {
               final subjects = _buildSubjectsFromLessons(lessons);
-              return _LessonsSubjectsGrid(
+              return _withOfflineBanner(result, _LessonsSubjectsGrid(
                 title: 'اختر المادة',
                 subjects: subjects,
                 onTap: (subjectId) => setState(() => _selectedSubject = subjectId),
-              );
+              ));
             }
 
             final selected = _selectedSubject!;
             final filtered = lessons.where((l) => l.subject == selected).toList();
-            return _LessonsBySubjectList(
+            return _withOfflineBanner(result, _LessonsBySubjectList(
               subjectId: selected,
               lessons: filtered,
               onBackToSubjects: () => setState(() => _selectedSubject = null),
@@ -326,9 +373,62 @@ class _TeacherLessonsArchiveState extends State<_TeacherLessonsArchive> {
                   ),
                 );
               },
-            );
+            ));
           },
         ),
+      ),
+    );
+  }
+}
+
+class _ArchiveLessonsResult {
+  final List<LessonModel> lessons;
+  final bool isOffline;
+  final String? onlineError;
+
+  const _ArchiveLessonsResult({
+    required this.lessons,
+    required this.isOffline,
+    this.onlineError,
+  });
+}
+
+class _OfflineArchiveBanner extends StatelessWidget {
+  final VoidCallback onRefreshOnline;
+  final String? errorText;
+
+  const _OfflineArchiveBanner({
+    required this.onRefreshOnline,
+    this.errorText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.tertiaryContainer.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.cloud_off_rounded, color: scheme.onTertiaryContainer),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              errorText == null || errorText!.isEmpty
+                  ? 'Showing downloaded archive (offline mode).'
+                  : 'Could not load online archive. Showing downloaded lessons.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+          TextButton(
+            onPressed: onRefreshOnline,
+            child: const Text('Retry online'),
+          ),
+        ],
       ),
     );
   }
