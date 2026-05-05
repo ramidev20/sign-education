@@ -304,6 +304,56 @@ class _TeacherLessonsArchiveState extends State<_TeacherLessonsArchive> {
     });
   }
 
+  Future<void> _confirmDeleteLesson(LessonModel lesson) async {
+    final lessonId = lesson.lessonId;
+    if (lessonId == null || lessonId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا يمكن حذف هذا الدرس: المعرّف غير موجود')),
+      );
+      return;
+    }
+
+    final title = (lesson.title?.trim().isNotEmpty ?? false)
+        ? lesson.title!.trim()
+        : 'هذا الدرس';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حذف الدرس'),
+        content: Text('هل أنت متأكد أنك تريد حذف "$title" نهائيًا؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await DbHelperLessons.deleteLesson(lessonId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم حذف الدرس بنجاح')));
+      _retryLoad();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر حذف الدرس: $e')),
+      );
+    }
+  }
+
   Widget _withOfflineBanner(_ArchiveLessonsResult result, Widget child) {
     if (!result.isOffline) return child;
     return Column(
@@ -373,6 +423,7 @@ class _TeacherLessonsArchiveState extends State<_TeacherLessonsArchive> {
                   ),
                 );
               },
+              onDeleteLesson: _confirmDeleteLesson,
             ));
           },
         ),
@@ -439,12 +490,14 @@ class _LessonsBySubjectList extends StatelessWidget {
   final List<LessonModel> lessons;
   final VoidCallback onBackToSubjects;
   final void Function(LessonModel lesson) onOpenLesson;
+  final void Function(LessonModel lesson)? onDeleteLesson;
 
   const _LessonsBySubjectList({
     required this.subjectId,
     required this.lessons,
     required this.onBackToSubjects,
     required this.onOpenLesson,
+    this.onDeleteLesson,
   });
 
   @override
@@ -485,7 +538,21 @@ class _LessonsBySubjectList extends StatelessWidget {
                         leading: const Icon(Icons.menu_book_outlined),
                         title: Text(lesson.title ?? 'درس'),
                         subtitle: Text('المادة: ${_subjectLabel(lesson.subject)}'),
-                        trailing: const Icon(Icons.picture_as_pdf_outlined),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.picture_as_pdf_outlined),
+                            if (onDeleteLesson != null) ...[
+                              const SizedBox(width: 4),
+                              IconButton(
+                                tooltip: 'حذف الدرس',
+                                onPressed: () => onDeleteLesson!(lesson),
+                                icon: const Icon(Icons.delete_outline_rounded),
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ],
+                          ],
+                        ),
                         onTap: () => onOpenLesson(lesson),
                       ),
                     );

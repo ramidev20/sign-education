@@ -18,7 +18,7 @@ class SixHatPage extends StatefulWidget {
 }
 
 class _SixHatPageState extends State<SixHatPage> {
-  static const _sceneSize = Size(1120, 860);
+  static const _sceneSize = Size(1180, 940);
   final _transform = TransformationController();
   final _viewerKey = GlobalKey();
   bool _didInitTransform = false;
@@ -48,7 +48,7 @@ class _SixHatPageState extends State<SixHatPage> {
       viewport.width / _sceneSize.width,
       viewport.height / _sceneSize.height,
     );
-    final scale = min(1.0, max(0.74, fittedScale * 0.92));
+    final scale = min(1.0, max(0.72, fittedScale * 0.95));
     final tx = (viewport.width / 2) - ((_sceneSize.width / 2) * scale);
     final ty = (viewport.height / 2) - ((_sceneSize.height / 2) * scale);
 
@@ -70,7 +70,7 @@ class _SixHatPageState extends State<SixHatPage> {
         body: InteractiveViewer(
           key: _viewerKey,
           transformationController: _transform,
-          minScale: 0.55,
+          minScale: 0.5,
           maxScale: 2.5,
           panEnabled: true,
           scaleEnabled: true,
@@ -135,16 +135,18 @@ class _PositionedHatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const centerX = 560.0;
-    const centerY = 420.0;
-    const radiusX = 320.0;
-    const radiusY = 250.0;
-    const cardW = 320.0;
-    const cardH = 210.0;
+    const columns = 2;
+    const cardW = 500.0;
+    const cardH = 230.0;
+    const startX = 80.0;
+    const startY = 70.0;
+    const gapX = 540.0;
+    const gapY = 280.0;
 
-    final angle = (-pi / 2) + ((2 * pi) * index / 6);
-    final left = centerX + (radiusX * cos(angle)) - (cardW / 2);
-    final top = centerY + (radiusY * sin(angle)) - (cardH / 2);
+    final row = index ~/ columns;
+    final col = index % columns;
+    final left = startX + (col * gapX);
+    final top = startY + (row * gapY);
 
     return Positioned(
       left: left,
@@ -214,4 +216,3 @@ class _HatCard extends StatelessWidget {
     );
   }
 }
-

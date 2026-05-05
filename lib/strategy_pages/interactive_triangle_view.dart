@@ -54,6 +54,8 @@ class _InteractiveTriangleViewState extends State<InteractiveTriangleView> {
     final title = (widget.triangleJson['title'] ?? 'المثلث التعليمي').toString();
     final description = (widget.triangleJson['description'] ?? '').toString();
     final corners = _normalizeCorners(widget.triangleJson);
+    final edgeRelations = _normalizeEdgeRelations(widget.triangleJson);
+    final cs = Theme.of(context).colorScheme;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -71,10 +73,7 @@ class _InteractiveTriangleViewState extends State<InteractiveTriangleView> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .surfaceContainerHighest
-                        .withOpacity(0.45),
+                    color: cs.surfaceContainerHighest.withOpacity(0.45),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Text(
@@ -99,14 +98,26 @@ class _InteractiveTriangleViewState extends State<InteractiveTriangleView> {
                   height: _sceneSize.height,
                   child: Stack(
                     children: [
-                      const Positioned.fill(
+                      Positioned.fill(
                         child: Padding(
-                          padding: EdgeInsets.symmetric(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 120,
                             vertical: 85,
                           ),
                           child: CustomPaint(
-                            painter: _TriangleLinePainter(),
+                            painter: _TriangleLinePainter(
+                              edgeRelations: edgeRelations,
+                              labelTextStyle:
+                                  Theme.of(context).textTheme.labelMedium?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ) ??
+                                      const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                              labelBackground: cs.surface.withOpacity(0.92),
+                              labelBorder: cs.outlineVariant,
+                            ),
                           ),
                         ),
                       ),
@@ -136,7 +147,7 @@ class _InteractiveTriangleViewState extends State<InteractiveTriangleView> {
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
               child: Text(
-                'يمكنك السحب والتكبير. تم ترك مسافة واضحة بين البطاقات وخطوط المثلث.',
+                'يمكنك السحب والتكبير. تم ترك مساحة واضحة بين البطاقات وخطوط المثلث.',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
@@ -179,6 +190,19 @@ class _InteractiveTriangleViewState extends State<InteractiveTriangleView> {
     }).toList();
   }
 
+  _TriangleEdgeRelations _normalizeEdgeRelations(Map<String, dynamic> data) {
+    final raw = data['edgeRelations'];
+    if (raw is! Map) {
+      return const _TriangleEdgeRelations();
+    }
+    final map = Map<String, dynamic>.from(raw);
+    return _TriangleEdgeRelations(
+      topLeft: (map['top_left'] ?? '').toString().trim(),
+      topRight: (map['top_right'] ?? '').toString().trim(),
+      leftRight: (map['left_right'] ?? '').toString().trim(),
+    );
+  }
+
   Color _parseHexColor(String input) {
     var hex = input.replaceAll('#', '').trim();
     if (hex.length == 6) hex = 'FF$hex';
@@ -191,7 +215,17 @@ class _InteractiveTriangleViewState extends State<InteractiveTriangleView> {
 }
 
 class _TriangleLinePainter extends CustomPainter {
-  const _TriangleLinePainter();
+  final _TriangleEdgeRelations edgeRelations;
+  final TextStyle labelTextStyle;
+  final Color labelBackground;
+  final Color labelBorder;
+
+  const _TriangleLinePainter({
+    required this.edgeRelations,
+    required this.labelTextStyle,
+    required this.labelBackground,
+    required this.labelBorder,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -208,10 +242,68 @@ class _TriangleLinePainter extends CustomPainter {
     canvas.drawLine(top, left, paint);
     canvas.drawLine(top, right, paint);
     canvas.drawLine(left, right, paint);
+
+    if (edgeRelations.topLeft.isNotEmpty) {
+      _drawEdgeLabel(
+        canvas,
+        edgeRelations.topLeft,
+        Offset((top.dx + left.dx) / 2 - 14, (top.dy + left.dy) / 2 - 8),
+      );
+    }
+    if (edgeRelations.topRight.isNotEmpty) {
+      _drawEdgeLabel(
+        canvas,
+        edgeRelations.topRight,
+        Offset((top.dx + right.dx) / 2 + 14, (top.dy + right.dy) / 2 - 8),
+      );
+    }
+    if (edgeRelations.leftRight.isNotEmpty) {
+      _drawEdgeLabel(
+        canvas,
+        edgeRelations.leftRight,
+        Offset((left.dx + right.dx) / 2, left.dy - 16),
+      );
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _TriangleLinePainter oldDelegate) => false;
+  bool shouldRepaint(covariant _TriangleLinePainter oldDelegate) {
+    return oldDelegate.edgeRelations != edgeRelations ||
+        oldDelegate.labelTextStyle != labelTextStyle ||
+        oldDelegate.labelBackground != labelBackground ||
+        oldDelegate.labelBorder != labelBorder;
+  }
+
+  void _drawEdgeLabel(Canvas canvas, String text, Offset center) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: labelTextStyle),
+      textDirection: TextDirection.rtl,
+      maxLines: 1,
+      ellipsis: '…',
+    )..layout(maxWidth: 170);
+
+    final rect = Rect.fromCenter(
+      center: center,
+      width: painter.width + 18,
+      height: painter.height + 8,
+    );
+    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(999));
+    final bg = Paint()..color = labelBackground;
+    final border = Paint()
+      ..color = labelBorder
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    canvas.drawRRect(rrect, bg);
+    canvas.drawRRect(rrect, border);
+    painter.paint(
+      canvas,
+      Offset(
+        rect.left + ((rect.width - painter.width) / 2),
+        rect.top + ((rect.height - painter.height) / 2),
+      ),
+    );
+  }
 }
 
 class _CornerCard extends StatelessWidget {
@@ -308,3 +400,26 @@ class _TriangleCorner {
   });
 }
 
+class _TriangleEdgeRelations {
+  final String topLeft;
+  final String topRight;
+  final String leftRight;
+
+  const _TriangleEdgeRelations({
+    this.topLeft = '',
+    this.topRight = '',
+    this.leftRight = '',
+  });
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is _TriangleEdgeRelations &&
+        other.topLeft == topLeft &&
+        other.topRight == topRight &&
+        other.leftRight == leftRight;
+  }
+
+  @override
+  int get hashCode => Object.hash(topLeft, topRight, leftRight);
+}

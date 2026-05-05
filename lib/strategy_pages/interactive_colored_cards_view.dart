@@ -18,15 +18,28 @@ class InteractiveColoredCardsView extends StatefulWidget {
       _InteractiveColoredCardsViewState();
 }
 
-class _InteractiveColoredCardsViewState extends State<InteractiveColoredCardsView> {
-  static const _sceneSize = Size(1120, 840);
+class _InteractiveColoredCardsViewState
+    extends State<InteractiveColoredCardsView> {
+  static const _columns = 3;
+  static const _cardW = 300.0;
+  static const _cardH = 210.0;
+  static const _startX = 70.0;
+  static const _startY = 60.0;
+  static const _gapX = 350.0;
+  static const _gapY = 240.0;
+
   final _transform = TransformationController();
   final _viewerKey = GlobalKey();
+
+  late final List<_ConceptCardData> _cards;
+  late final Size _sceneSize;
   bool _didInitTransform = false;
 
   @override
   void initState() {
     super.initState();
+    _cards = _normalizeCards(widget.cardsJson);
+    _sceneSize = _computeSceneSize(_cards.length);
     WidgetsBinding.instance.addPostFrameCallback((_) => _initDefaultZoomOut());
   }
 
@@ -53,7 +66,6 @@ class _InteractiveColoredCardsViewState extends State<InteractiveColoredCardsVie
   @override
   Widget build(BuildContext context) {
     final title = (widget.cardsJson['title'] ?? 'البطاقات الملونة').toString();
-    final cards = _normalizeCards(widget.cardsJson);
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -62,7 +74,7 @@ class _InteractiveColoredCardsViewState extends State<InteractiveColoredCardsVie
           title: Text(title),
           centerTitle: true,
         ),
-        body: cards.isEmpty
+        body: _cards.isEmpty
             ? const Center(child: Text('لا توجد بطاقات للعرض'))
             : InteractiveViewer(
                 key: _viewerKey,
@@ -86,15 +98,18 @@ class _InteractiveColoredCardsViewState extends State<InteractiveColoredCardsVie
                               end: Alignment.bottomCenter,
                               colors: [
                                 Theme.of(context).colorScheme.surface,
-                                Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.25),
+                                Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest
+                                    .withOpacity(0.25),
                               ],
                             ),
                           ),
                         ),
                       ),
-                      for (var index = 0; index < cards.length; index++)
+                      for (var index = 0; index < _cards.length; index++)
                         _PositionedConceptCard(
-                          data: cards[index],
+                          data: _cards[index],
                           index: index,
                         ),
                     ],
@@ -112,11 +127,46 @@ class _InteractiveColoredCardsViewState extends State<InteractiveColoredCardsVie
       final map = Map<String, dynamic>.from(item);
       return _ConceptCardData(
         title: (map['title'] ?? '').toString(),
-        type: (map['type'] ?? '').toString(),
+        type: _toArabicCardType((map['type'] ?? '').toString()),
         content: (map['content'] ?? '').toString(),
         color: _parseHexColor(map['color']?.toString() ?? '#3b82f6'),
       );
     }).toList();
+  }
+
+  Size _computeSceneSize(int count) {
+    final rows = max(1, (count / _columns).ceil());
+    final width = max(
+      1120.0,
+      (_startX * 2) + _cardW + ((_columns - 1) * _gapX),
+    );
+    final height = max(
+      840.0,
+      (_startY * 2) + _cardH + ((rows - 1) * _gapY),
+    );
+    return Size(width, height);
+  }
+
+  String _toArabicCardType(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return value;
+    final key = value.toLowerCase().replaceAll('_', ' ').replaceAll('-', ' ');
+    const map = {
+      'definition': 'تعريف',
+      'example': 'مثال',
+      'rule': 'قاعدة',
+      'fact': 'حقيقة',
+      'illustration': 'توضيح',
+      'summary': 'ملخص',
+      'question': 'سؤال',
+      'cause': 'سبب',
+      'result': 'نتيجة',
+      'effect': 'تأثير',
+      'comparison': 'مقارنة',
+      'note': 'ملاحظة',
+      'concept': 'مفهوم',
+    };
+    return map[key] ?? value;
   }
 
   Color _parseHexColor(String input) {
@@ -141,24 +191,20 @@ class _PositionedConceptCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const columns = 3;
-    final row = index ~/ columns;
-    final col = index % columns;
-    const cardW = 300.0;
-    const cardH = 210.0;
-    const startX = 70.0;
-    const startY = 60.0;
-    const gapX = 350.0;
-    const gapY = 240.0;
+    final row = index ~/ _InteractiveColoredCardsViewState._columns;
+    final col = index % _InteractiveColoredCardsViewState._columns;
 
-    final left = startX + (col * gapX) + (row.isOdd ? 28 : 0);
-    final top = startY + (row * gapY);
+    final left = _InteractiveColoredCardsViewState._startX +
+        (col * _InteractiveColoredCardsViewState._gapX) +
+        (row.isOdd ? 28 : 0);
+    final top = _InteractiveColoredCardsViewState._startY +
+        (row * _InteractiveColoredCardsViewState._gapY);
 
     return Positioned(
       left: left,
       top: top,
-      width: cardW,
-      height: cardH,
+      width: _InteractiveColoredCardsViewState._cardW,
+      height: _InteractiveColoredCardsViewState._cardH,
       child: _ConceptCardTile(data: data),
     );
   }
@@ -187,7 +233,8 @@ class _ConceptCardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onColor = ThemeData.estimateBrightnessForColor(data.color) == Brightness.dark
+    final onColor = ThemeData.estimateBrightnessForColor(data.color) ==
+            Brightness.dark
         ? Colors.white
         : Colors.black;
 
@@ -248,4 +295,3 @@ class _ConceptCardTile extends StatelessWidget {
     );
   }
 }
-

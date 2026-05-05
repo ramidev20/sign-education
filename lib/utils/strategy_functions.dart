@@ -117,7 +117,7 @@ Future<Map<String, dynamic>> generateColoredCardsFromText(String text) async {
   return await _sendPrompt(
     systemPrompt: colored_cards_prompt,
     userPrompt:
-        "Convert this lesson content into colored concept cards JSON format: $text",
+        "Convert this lesson content into colored concept cards JSON format, and make all type values Arabic only: $text",
   );
 }
 
@@ -148,6 +148,7 @@ Future<Map<String, dynamic>> generateTriangleFromText(String text) async {
   // uses the existing _sendPrompt helper
   return await _sendPrompt(
     systemPrompt: triangle_prompt,
-    userPrompt: "Convert this lesson into an educational triangle JSON: $text",
+    userPrompt:
+        "Convert this lesson into an educational triangle JSON, and include edgeRelations labels for the three triangle edges (top_left, top_right, left_right): $text",
   );
 }

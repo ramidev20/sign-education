@@ -163,10 +163,11 @@ You are a helpful assistant that converts educational text into JSON for the "Co
 - The value of "conceptCards" must be a list of objects.
 - Each object must include:
   - "title": short title of the card
-  - "type": category of the information (e.g., "definition", "example", "rule", "fact", "illustration")
+  - "type": category of the information, but in Arabic words only (e.g., "تعريف", "مثال", "قاعدة", "حقيقة", "توضيح")
   - "content": description or main idea
   - "color": HEX color code that represents the type (e.g., "#F87171" for red, "#34D399" for green)
 - Do NOT include trailing commas.
+- Never return English type labels like "definition", "example", "fact", or "illustration".
 
 Follow exactly this format:
 
@@ -175,13 +176,13 @@ Follow exactly this format:
   "conceptCards": [
     {
       "title": "Water Cycle",
-      "type": "definition",
+      "type": "تعريف",
       "content": "The process through which water moves around Earth in different forms.",
       "color": "#60A5FA"
     },
     {
       "title": "Evaporation",
-      "type": "example",
+      "type": "مثال",
       "content": "When heat turns water from oceans into vapor.",
       "color": "#FBBF24"
     }
@@ -267,6 +268,10 @@ You are a helpful assistant that converts lesson text into a JSON structure for 
 - Return ONLY valid JSON (no markdown, no explanations, no code fences).
 - The JSON must be an object with one key: "triangleMap".
 - The value of "triangleMap" must be a list with exactly three objects (one for each corner of the triangle).
+- The JSON may include an optional top-level key "edgeRelations" as an object with exactly these keys:
+  - "top_left": relation text between top and left corners.
+  - "top_right": relation text between top and right corners.
+  - "left_right": relation text between left and right corners.
 - Each corner object must include:
   - "corner": short key name for the corner (e.g., "المعرفة", "المهارة", "الاتجاه")
   - "title": short title for this corner
@@ -280,6 +285,11 @@ Follow exactly this format:
 {
   "title": "عنوان الدرس (اختياري)",
   "description": "وصف مختصر بدون حذف أفكار مهمة (اختياري)",
+  "edgeRelations": {
+    "top_left": "يبني الأساس",
+    "top_right": "يوجّه التطبيق",
+    "left_right": "يتكامل مع"
+  },
   "triangleMap": [
     {
       "corner": "المعرفة",

@@ -13,23 +13,59 @@ class TimelineEditorPage extends StatefulWidget {
 
 class _TimelineEditorPageState extends State<TimelineEditorPage> {
   bool _saving = false;
-  late String _title;
+  late final TextEditingController _titleController;
   late List<Map<String, dynamic>> _events;
 
   @override
   void initState() {
     super.initState();
     final json = widget.strategy.contentJson;
-    _title = (json['content']?.toString().trim().isNotEmpty ?? false)
-        ? json['content'].toString()
-        : 'الخط الزمني';
+    _titleController = TextEditingController(
+      text: (json['content']?.toString().trim().isNotEmpty ?? false)
+          ? json['content'].toString()
+          : 'الخط الزمني',
+    );
 
-    final nodes = (json['nodes'] as List? ?? const [])
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-    _events = nodes
-        .where((e) => (e['date']?.toString().isNotEmpty ?? false))
-        .toList();
+    _events = _extractEvents(json);
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, dynamic>> _extractEvents(Map<String, dynamic> json) {
+    final result = <Map<String, dynamic>>[];
+
+    void walk(dynamic raw) {
+      if (raw is! Map) return;
+      final node = Map<String, dynamic>.from(raw);
+      final hasDate = (node['date']?.toString().trim().isNotEmpty ?? false);
+      final hasContent =
+          (node['content']?.toString().trim().isNotEmpty ?? false);
+
+      if (hasDate || hasContent) {
+        result.add({
+          'id': (node['id']?.toString().trim().isNotEmpty ?? false)
+              ? node['id'].toString().trim()
+              : const Uuid().v4(),
+          'date': (node['date'] ?? '').toString(),
+          'content': (node['content'] ?? '').toString(),
+          'nodes': <dynamic>[],
+        });
+      }
+
+      for (final child in (node['nodes'] as List? ?? const [])) {
+        walk(child);
+      }
+    }
+
+    for (final rootChild in (json['nodes'] as List? ?? const [])) {
+      walk(rootChild);
+    }
+
+    return result;
   }
 
   void _add() {
@@ -50,8 +86,7 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
   Future<void> _editEvent(int index) async {
     final e = _events[index];
     final date = TextEditingController(text: e['date']?.toString() ?? '');
-    final content =
-        TextEditingController(text: e['content']?.toString() ?? '');
+    final content = TextEditingController(text: e['content']?.toString() ?? '');
 
     final ok = await showDialog<bool>(
       context: context,
@@ -99,6 +134,38 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
     });
   }
 
+  void _sortByDate() {
+    int rank(String value) {
+      final text = value.trim();
+      if (text.isEmpty) return 1 << 30;
+
+      final parsed = DateTime.tryParse(text.replaceAll('/', '-'));
+      if (parsed != null) return parsed.millisecondsSinceEpoch;
+
+      final numbers = RegExp(r'\d+')
+          .allMatches(text)
+          .map((m) => int.tryParse(m.group(0) ?? '') ?? 0)
+          .toList();
+      if (numbers.isEmpty) return 1 << 30;
+
+      if (numbers.length == 1) {
+        return DateTime(numbers[0], 1, 1).millisecondsSinceEpoch;
+      }
+
+      final year = numbers[0];
+      final month = numbers.length > 1 ? numbers[1].clamp(1, 12).toInt() : 1;
+      final day = numbers.length > 2 ? numbers[2].clamp(1, 28).toInt() : 1;
+      return DateTime(year, month, day).millisecondsSinceEpoch;
+    }
+
+    setState(() {
+      _events.sort(
+        (a, b) => rank((a['date'] ?? '').toString())
+            .compareTo(rank((b['date'] ?? '').toString())),
+      );
+    });
+  }
+
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
@@ -106,7 +173,9 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
         lessonStrategyId: widget.strategy.lessonStrategyId,
         contentJson: {
           'id': 'root',
-          'content': _title,
+          'content': _titleController.text.trim().isEmpty
+              ? 'الخط الزمني'
+              : _titleController.text.trim(),
           'nodes': _events,
         },
       );
@@ -132,6 +201,11 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
           centerTitle: true,
           actions: [
             IconButton(
+              tooltip: 'ترتيب حسب التاريخ',
+              onPressed: _saving ? null : _sortByDate,
+              icon: const Icon(Icons.sort),
+            ),
+            IconButton(
               tooltip: 'إضافة',
               onPressed: _saving ? null : _add,
               icon: const Icon(Icons.add),
@@ -154,8 +228,7 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
             Padding(
               padding: const EdgeInsets.all(12),
               child: TextField(
-                controller: TextEditingController(text: _title),
-                onChanged: (v) => _title = v,
+                controller: _titleController,
                 decoration: const InputDecoration(
                   labelText: 'عنوان الخط الزمني',
                   border: OutlineInputBorder(),
@@ -179,8 +252,8 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
                     key: ValueKey('t-${e['id'] ?? index}'),
                     child: ListTile(
                       leading: const Icon(Icons.event_outlined),
-                      title: Text(e['content']?.toString() ?? ''),
-                      subtitle: Text(e['date']?.toString() ?? ''),
+                      title: Text((e['content'] ?? '').toString()),
+                      subtitle: Text((e['date'] ?? '').toString()),
                       trailing: Wrap(
                         spacing: 4,
                         children: [
@@ -209,4 +282,3 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
     );
   }
 }
-
