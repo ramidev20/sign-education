@@ -53,13 +53,27 @@ class StorageService {
 
     try {
       if (user.role == 'student') {
-        // 🔹 Get new lessons (created after last sync)
-        final lessons = await supabase
-            .from('lessons')
-            .select()
-            .gte('created_at', lastSync?.toIso8601String() ?? '1970-01-01');
+        // 🔹 Get student's class groups first to avoid notifying unrelated lessons
+        final groupsRes = await supabase
+            .from('class_group_members')
+            .select('class_group_id')
+            .eq('user_id', user.id);
+        final groupIds = (groupsRes as List)
+            .map((e) => (e['class_group_id'] ?? '').toString())
+            .where((id) => id.isNotEmpty)
+            .toSet()
+            .toList();
 
-        final newLessons = lessons.length;
+        // 🔹 Get new lessons (created after last sync)
+        int newLessons = 0;
+        if (groupIds.isNotEmpty) {
+          final lessons = await supabase
+              .from('lessons')
+              .select('lesson_id')
+              .inFilter('class_group_id', groupIds)
+              .gte('created_at', lastSync?.toIso8601String() ?? '1970-01-01');
+          newLessons = lessons.length;
+        }
 
         // 🔹 Get new assignments shared with this student
         final assignments = await supabase
@@ -69,6 +83,17 @@ class StorageService {
             .gte('created_at', lastSync?.toIso8601String() ?? '1970-01-01');
 
         final newAssignments = assignments.length;
+
+        int newLiveQuizzes = 0;
+        if (groupIds.isNotEmpty) {
+          final quizzes = await supabase
+              .from('live_quizzes')
+              .select('quiz_id')
+              .eq('status', 'active')
+              .inFilter('class_group_id', groupIds)
+              .gte('created_at', lastSync?.toIso8601String() ?? '1970-01-01');
+          newLiveQuizzes = quizzes.length;
+        }
 
         if (newLessons > 0) {
           await NotificationService.showOrUpdateNotification(
@@ -87,12 +112,21 @@ class StorageService {
             payload: 'assignments',
           );
         }
+
+        if (newLiveQuizzes > 0) {
+          await NotificationService.showOrUpdateNotification(
+            id: 13,
+            title: '🧠 اختبارات مباشرة',
+            body: 'يوجد $newLiveQuizzes اختبار مباشر جديد.',
+            payload: 'live_quizzes',
+          );
+        }
       } else {
         // 🔹 Get all deliveries since last sync
         final deliveries = await supabase
             .from('assignments_deliveries')
-            .select('assignment_id, created_at')
-            .gte('created_at', lastSync?.toIso8601String() ?? '1970-01-01');
+            .select('assignment_id, delivery_date')
+            .gte('delivery_date', lastSync?.toIso8601String() ?? '1970-01-01');
 
         if (deliveries.isEmpty) {
           await _saveLastSync(now);

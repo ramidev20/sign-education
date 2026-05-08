@@ -1,12 +1,12 @@
-import 'dart:io';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:sign_education/data/models/assignment_model.dart';
 import 'package:sign_education/data/db/db_helper_assigments.dart';
+import 'package:sign_education/data/db/db_helper_classes.dart';
+import 'package:sign_education/data/models/class_group_model.dart';
+import 'package:sign_education/data/models/assignment_model.dart';
 import 'package:sign_education/data/models/user_model.dart';
-import 'package:sign_education/utils/app_theme.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:sign_education/pages/teacher_pages/assignment_questions_editor_page.dart';
+import 'package:sign_education/pages/lesson_select_group_page.dart';
+
 
 class AssignmentAddPage extends StatefulWidget {
   final UserModel user;
@@ -18,19 +18,17 @@ class AssignmentAddPage extends StatefulWidget {
 
 class _AssignmentAddPageState extends State<AssignmentAddPage> {
   final _formKey = GlobalKey<FormState>();
-  final supabase = Supabase.instance.client;
+  final _titleController = TextEditingController();
+  final _instructionsController = TextEditingController();
 
-  String title = '';
-  String description = '';
   String? subject;
   DateTime? endTime;
-  PlatformFile? pickedFile;
+  String? selectedGroupId;
+  ClassGroupModel? _selectedGroup;
 
-  List<Map<String, dynamic>> groups = [];
-  Map<String, List<Map<String, dynamic>>> groupStudents = {};
-  Map<String, Set<String>> selectedStudents = {};
+  List<Map<String, dynamic>> _questionsPayload = const [];
 
-  final List<Map<String, dynamic>> subjectsList = [
+  final List<Map<String, dynamic>> subjectsList = const [
     {'name': "math", 'label': 'رياضيات'},
     {'name': "physics", 'label': 'فيزياء'},
     {'name': "chemistry", 'label': 'كيمياء'},
@@ -43,293 +41,273 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
   @override
   void initState() {
     super.initState();
-    _fetchGroups();
+    _questionsPayload = const [];
   }
 
-  Future<void> _fetchGroups() async {
-    final result = await supabase
-        .from('class_groups')
-        .select('class_group_id, name')
-        .eq('teacher_id', widget.user.id);
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _instructionsController.dispose();
+    super.dispose();
+  }
 
-    final fetchedGroups = List<Map<String, dynamic>>.from(result);
+  Future<void> _selectGroup() async {
+    final result = await Navigator.push<ClassGroupModel>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LessonSelectGroupPage(
+          user: widget.user,
+          initiallySelectedGroupId: selectedGroupId,
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      _selectedGroup = result;
+      selectedGroupId = result.classGroupId;
+    });
+  }
 
-    for (var g in fetchedGroups) {
-      final members = await supabase
-          .from('class_group_members')
-          .select('user_id, users(name)')
-          .eq('class_group_id', g['class_group_id'])
-          .eq('role', 'student');
+  Future<void> _editQuestions() async {
+    final result = await Navigator.push<List<Map<String, dynamic>>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AssignmentQuestionsEditorPage(
+          initialQuestions: _questionsPayload,
+        ),
+      ),
+    );
 
-      groupStudents[g['class_group_id']] = List<Map<String, dynamic>>.from(
-        members.map((m) => {'id': m['user_id'], 'name': m['users']['name']}),
+    if (result == null || !mounted) return;
+    setState(() => _questionsPayload = result);
+  }
+
+  Future<void> _pickDeadline() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (time == null || !mounted) return;
+    setState(() {
+      endTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
       );
-      selectedStudents[g['class_group_id']] = {};
-    }
-
-    setState(() => groups = fetchedGroups);
+    });
   }
 
   Future<void> _saveAssignment() async {
     if (!_formKey.currentState!.validate()) return;
-    _formKey.currentState!.save();
-
-    if (endTime == null || pickedFile == null) {
+    if (endTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("يرجى تحديد الملف وموعد التسليم")),
+        const SnackBar(content: Text("يرجى تحديد موعد التسليم")),
+      );
+      return;
+    }
+
+    if (selectedGroupId == null || selectedGroupId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("اختر مجموعة واحدة على الأقل")),
+      );
+      return;
+    }
+
+    if (_questionsPayload.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("أضف سؤالاً واحداً على الأقل")),
       );
       return;
     }
 
     try {
-      // ✅ 1. Upload the assignment file to Supabase Storage
-      final filePath = pickedFile!.path!;
-      final fileName =
-          "assignments/${widget.user.id}_${DateTime.now().millisecondsSinceEpoch}_${pickedFile!.name}";
+      final groupStudents = await DbHelperClasses.getStudentsByGroup(
+        selectedGroupId!,
+      );
+      final selectedStudentIds = groupStudents.map((s) => s.id).toSet().toList();
+      if (selectedStudentIds.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("لا يوجد طلاب داخل هذه المجموعة")),
+        );
+        return;
+      }
 
-      await supabase.storage
-          .from('assignments')
-          .upload(
-            fileName,
-            File(filePath),
-            fileOptions: const FileOptions(upsert: true),
-          );
-
-      final fileUrl = supabase.storage
-          .from('assignments')
-          .getPublicUrl(fileName);
-
-      // ✅ 2. Create the assignment in the database
       final assignment = AssignmentModel(
         subject: subject!,
         teacherId: widget.user.id,
-        classGroupId: "multi",
-        title: title,
-        description: description,
+        classGroupId: selectedGroupId!,
+        title: _titleController.text.trim(),
+        description: _instructionsController.text.trim(),
         status: "pending",
         createdAt: DateTime.now(),
         completeAt: endTime!,
-        fileUrl: fileUrl, // ✅ real online link now!
+        fileUrl: null,
+        assignmentContentJson: {
+          'version': 1,
+          'questions': _questionsPayload,
+        },
       );
 
-      final assignmentId = await DbHelperAssignments.createAssignment(
-        assignment,
-      );
-
-      // ✅ 3. Share assignment with selected students
-      final selectedStudentIds = selectedStudents.values
-          .expand((set) => set)
-          .toSet()
-          .toList();
-
+      final assignmentId = await DbHelperAssignments.createAssignment(assignment);
       for (final studentId in selectedStudentIds) {
         await DbHelperAssignments.shareAssignment(assignmentId, studentId);
       }
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ تم إنشاء الواجب ومشاركته بنجاح")),
+        const SnackBar(content: Text("تم إنشاء الواجب الديناميكي ومشاركته")),
       );
-
       Navigator.pop(context, true);
     } catch (e) {
-      debugPrint("❌ فشل في رفع أو إنشاء الواجب: $e");
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("❌ حدث خطأ أثناء إنشاء الواجب: $e")),
+        SnackBar(content: Text("حدث خطأ أثناء إنشاء الواجب: $e")),
       );
     }
   }
 
-  void _toggleSelectAll(String groupId, bool selectAll) {
-    setState(() {
-      if (selectAll) {
-        selectedStudents[groupId] = groupStudents[groupId]!
-            .map((s) => s['id'] as String)
-            .toSet();
-      } else {
-        selectedStudents[groupId]!.clear();
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text("إضافة واجب")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              TextFormField(
-                decoration: InputDecoration(
-                  labelText: 'العنوان',
-                ),
-                onSaved: (v) => title = v ?? '',
-                validator: (v) => v!.isEmpty ? 'مطلوب' : null,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: "المادة",
-                ),
-                items: subjectsList
-                    .map(
-                      (s) => DropdownMenuItem<String>(
-                        value: s['name'] as String,
-                        child: Text(s['label'] as String),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) => subject = v,
-                validator: (v) => v == null ? "اختر مادة" : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                decoration: InputDecoration(
-                  labelText: 'التعليمات',
-                ),
-                maxLines: 3,
-                onSaved: (v) => description = v ?? '',
-                validator: (v) => v!.isEmpty ? 'مطلوب' : null,
-              ),
-              const SizedBox(height: 16),
-
-              // 🔽 Group and student selection section
-              const Text(
-                "اختر المجموعات والطلاب:",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-
-              if (groups.isEmpty)
-                const Center(child: CircularProgressIndicator())
-              else
-                ...groups.map((group) {
-                  final groupId = group['class_group_id'];
-                  final students = groupStudents[groupId] ?? [];
-                  final selected = selectedStudents[groupId]!;
-
-                  return Card(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: AppTheme.globalRadius,
+      appBar: AppBar(title: const Text("إضافة واجب ديناميكي")),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _titleController,
+                      decoration: const InputDecoration(labelText: 'العنوان'),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'العنوان مطلوب'
+                          : null,
                     ),
-                    child: ExpansionTile(
-                      title: Text(group['name'] ?? 'مجموعة'),
-                      children: [
-                        ListTile(
-                          title: const Text('تحديد الكل'),
-                          trailing: Checkbox(
-                            value:
-                                selected.length == students.length &&
-                                students.isNotEmpty,
-                            onChanged: (v) =>
-                                _toggleSelectAll(groupId, v ?? false),
-                          ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(labelText: "المادة"),
+                      items: subjectsList
+                          .map(
+                            (s) => DropdownMenuItem<String>(
+                              value: s['name'] as String,
+                              child: Text(s['label'] as String),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => subject = v,
+                      validator: (v) => v == null ? "اختر مادة" : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _instructionsController,
+                      decoration: const InputDecoration(labelText: 'تعليمات الواجب'),
+                      maxLines: 3,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'أدخل تعليمات الواجب'
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    ListTile(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      tileColor: cs.surfaceContainerHighest.withOpacity(0.5),
+                      title: Text(
+                        endTime == null
+                            ? 'اختر موعد التسليم'
+                            : '${endTime!.day}/${endTime!.month}/${endTime!.year} - '
+                                '${endTime!.hour}:${endTime!.minute.toString().padLeft(2, '0')}',
+                      ),
+                      trailing: const Icon(Icons.calendar_today_outlined),
+                      onTap: _pickDeadline,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "أسئلة الواجب",
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 8),
+                    Card(
+                      margin: EdgeInsets.zero,
+                      child: ListTile(
+                        leading: const CircleAvatar(
+                          child: Icon(Icons.quiz_outlined),
                         ),
-                        ...students.map((student) {
-                          final isChecked = selected.contains(student['id']);
-                          return CheckboxListTile(
-                            title: Text(student['name']),
-                            value: isChecked,
-                            onChanged: (v) {
-                              setState(() {
-                                if (v == true) {
-                                  selected.add(student['id']);
-                                } else {
-                                  selected.remove(student['id']);
-                                }
-                              });
-                            },
-                          );
-                        }),
-                      ],
-                    ),
-                  );
-                }),
-
-              const SizedBox(height: 16),
-
-              ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppTheme.globalRadius,
-                ),
-                tileColor: Theme.of(context).cardColor,
-                title: Text(
-                  endTime == null
-                      ? 'اختر موعد التسليم'
-                      : '${endTime!.day}/${endTime!.month}/${endTime!.year} - '
-                            '${endTime!.hour}:${endTime!.minute.toString().padLeft(2, '0')}',
-                ),
-                trailing: Icon(Icons.calendar_today, color: AppTheme.brand),
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now(),
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime(2100),
-                  );
-                  if (date != null) {
-                    final time = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay.now(),
-                    );
-                    if (time != null) {
-                      setState(() {
-                        endTime = DateTime(
-                          date.year,
-                          date.month,
-                          date.day,
-                          time.hour,
-                          time.minute,
-                        );
-                      });
-                    }
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.attach_file),
-                label: const Text("اختر ملف"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.brand,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppTheme.globalRadius,
-                  ),
-                ),
-                onPressed: () async {
-                  final result = await FilePicker.platform.pickFiles(
-                    type: FileType.custom,
-                    allowedExtensions: ["pdf", "doc", "docx"],
-                  );
-                  if (result != null) {
-                    setState(() => pickedFile = result.files.first);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text("تم اختيار الملف: ${pickedFile!.name}"),
+                        title: const Text('إدارة الأسئلة'),
+                        subtitle: Text(
+                          _questionsPayload.isEmpty
+                              ? 'لم تتم إضافة أسئلة بعد'
+                              : 'عدد الأسئلة: ${_questionsPayload.length}',
+                        ),
+                        trailing: const Icon(Icons.chevron_left_rounded),
+                        onTap: _editQuestions,
                       ),
-                    );
-                  }
-                },
-              ),
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                icon: const Icon(Icons.save),
-                label: const Text('حفظ الواجب'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.accent,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppTheme.globalRadius,
-                  ),
+                    ),
+                  ],
                 ),
-                onPressed: _saveAssignment,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("اختر المجموعة", style: TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    Card(
+                      margin: EdgeInsets.zero,
+                      child: ListTile(
+                        leading: const CircleAvatar(
+                          child: Icon(Icons.group),
+                        ),
+                        title: Text(_selectedGroup?.name ?? 'اضغط لاختيار المجموعة'),
+                        subtitle: _selectedGroup == null
+                            ? const Text('سيتم اختيار المجموعة في صفحة منفصلة.')
+                            : Text(
+                                '${_selectedGroup!.level} • ${_selectedGroup!.subject}',
+                              ),
+                        trailing: const Icon(Icons.chevron_left_rounded),
+                        onTap: _selectGroup,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              onPressed: _saveAssignment,
+              icon: const Icon(Icons.save_outlined),
+              label: const Text('حفظ ومشاركة الواجب'),
+            ),
+          ],
         ),
       ),
     );

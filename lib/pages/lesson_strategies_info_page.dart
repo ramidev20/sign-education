@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/models/user_model.dart';
-import 'package:sign_education/pages/teacher_lesson_strategies_page.dart';
 import 'package:sign_education/utils/strategy_catalog.dart';
 
 class LessonStrategiesInfoPage extends StatelessWidget {
@@ -77,23 +76,6 @@ class LessonStrategiesInfoPage extends StatelessWidget {
         ),
         body: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest
-                      .withOpacity(0.45),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  'اختر الاستراتيجية المناسبة ثم افتح إدارة الاستراتيجيات لإضافتها لكل درس وتعديلها.',
-                  style: theme.textTheme.bodyMedium,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
             Expanded(
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
@@ -126,24 +108,6 @@ class LessonStrategiesInfoPage extends StatelessWidget {
                 },
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => TeacherLessonStrategiesPage(user: user),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.open_in_new_rounded),
-                label: const Text('فتح إدارة استراتيجيات الدروس'),
-              ),
-            ),
           ],
         ),
       ),
@@ -164,4 +128,3 @@ class _StrategyInfo {
     required this.color,
   });
 }
-

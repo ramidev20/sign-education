@@ -6,8 +6,7 @@ class LessonModel {
   final String teacherId; // FK → users.id (teacher who created/imported lesson)
   final String classGroupId; // FK → class/group id (students assigned)
   final String? title; // Optional title
-  final String? description; // Optional description
-  final String? fileUrl; // Optional storage file (e.g., Supabase storage path)
+  final String? description; // Main lesson text content
   final DateTime createdAt;
 
   LessonModel({
@@ -18,7 +17,6 @@ class LessonModel {
     required this.classGroupId,
     this.title,
     this.description,
-    this.fileUrl,
     required this.createdAt,
   });
 
@@ -32,7 +30,6 @@ class LessonModel {
       classGroupId: map['class_group_id'] ?? '',
       title: map['title'],
       description: map['description'],
-      fileUrl: map['file_url'],
       createdAt: DateTime.tryParse(map['created_at'] ?? '') ?? DateTime.now(),
     );
   }
@@ -46,7 +43,6 @@ class LessonModel {
       'class_group_id': classGroupId,
       'title': title,
       'description': description,
-      'file_url': fileUrl,
       'created_at': createdAt.toIso8601String(),
     };
   }

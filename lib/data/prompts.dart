@@ -85,6 +85,7 @@ Given a topic or text, convert it into a **hierarchical progression structure**,
   - "level": numeric value starting from 1 for the simplest idea.
   - "title": short title or idea summary.
   - "description": a short explanation of this stage or idea.
+- Keep the output language the same as the input language.
 - Do NOT include trailing commas.
 - Close all brackets properly.
 

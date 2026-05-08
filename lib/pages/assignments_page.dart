@@ -7,8 +7,13 @@ enum UserType { student, teacher }
 
 class AssignmentsPage extends StatelessWidget {
   final UserModel user;
+  final int initialTabIndex;
 
-  const AssignmentsPage({super.key, required this.user});
+  const AssignmentsPage({
+    super.key,
+    required this.user,
+    this.initialTabIndex = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -23,9 +28,9 @@ class AssignmentsPage extends StatelessWidget {
         centerTitle: true,
       ),
       body: isStudent
-          ? StudentAssignmentsPage(user: user)
+          ? StudentAssignmentsPage(user: user, initialTabIndex: initialTabIndex)
           : isTeacher
-          ? TeacherAssignmentsPage(user: user)
+          ? TeacherAssignmentsPage(user: user, initialTabIndex: initialTabIndex)
           : null,
     );
   }

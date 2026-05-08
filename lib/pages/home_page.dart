@@ -7,6 +7,7 @@ import 'package:sign_education/pages/groups_page.dart';
 import 'package:sign_education/pages/lessons_page.dart';
 import 'package:sign_education/pages/pricing_page.dart';
 import 'package:sign_education/pages/profile_page.dart';
+import 'package:sign_education/pages/quizzes_page.dart';
 import 'package:sign_education/pages/updates_page.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
@@ -62,7 +63,14 @@ class _HomePageState extends State<HomePage> {
         MaterialPageRoute(builder: (context) => LessonsPage(user: widget.user)),
       ),
     },
-
+    {
+      'title': 'اختبار مباشر',
+      'image': "assets/images/assigments.jpeg",
+      'action': () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => QuizzesPage(user: widget.user)),
+      ),
+    },
     {
       'title': 'الواجبات',
       'image': "assets/images/assigments.jpeg",

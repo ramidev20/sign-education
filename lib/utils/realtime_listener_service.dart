@@ -14,11 +14,13 @@ class RealtimeListenerService {
   final SupabaseClient supabase = Supabase.instance.client;
   RealtimeChannel? _lessonChannel;
   RealtimeChannel? _assignmentChannel;
+  RealtimeChannel? _liveQuizChannel;
   RealtimeChannel? _deliveryChannel;
 
   bool _isListening = false;
   DateTime? _lastLessonTime;
   DateTime? _lastAssignmentTime;
+  DateTime? _lastLiveQuizTime;
   DateTime? _lastDeliveryTime;
 
   /// Start realtime listeners
@@ -35,6 +37,7 @@ class RealtimeListenerService {
     if (role == 'student') {
       _listenToNewLessons(userId);
       _listenToNewAssignments(userId);
+      _listenToNewLiveQuizzes(userId);
     } else if (role == 'teacher') {
       _listenToNewDeliveries(userId);
     }
@@ -43,9 +46,11 @@ class RealtimeListenerService {
   Future<void> stop() async {
     await _lessonChannel?.unsubscribe();
     await _assignmentChannel?.unsubscribe();
+    await _liveQuizChannel?.unsubscribe();
     await _deliveryChannel?.unsubscribe();
     _lessonChannel = null;
     _assignmentChannel = null;
+    _liveQuizChannel = null;
     _deliveryChannel = null;
     _isListening = false;
   }
@@ -133,6 +138,44 @@ class RealtimeListenerService {
 
     debugPrint(
       'RealtimeListenerService: listening to assignments for $userId...',
+    );
+  }
+
+  /// 🧑‍🎓 Students → Listen to new live quizzes for their groups
+  void _listenToNewLiveQuizzes(String userId) {
+    _liveQuizChannel ??= supabase.channel('live_quiz_listener_$userId');
+
+    _liveQuizChannel!
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'live_quizzes',
+          callback: (payload) async {
+            final newRecord = payload.newRecord;
+            final classGroupId = (newRecord['class_group_id'] ?? '').toString();
+            if (classGroupId.isEmpty) return;
+            if (!await _studentInClassGroup(userId, classGroupId)) return;
+
+            final now = DateTime.now();
+            if (_lastLiveQuizTime != null &&
+                now.difference(_lastLiveQuizTime!).inSeconds < 3) {
+              return;
+            }
+            _lastLiveQuizTime = now;
+
+            final quizTitle = (newRecord['title'] ?? 'اختبار مباشر').toString();
+            await NotificationService.showOrUpdateNotification(
+              id: 4,
+              title: '🧠 اختبار مباشر جديد',
+              body: 'تم بدء "$quizTitle" الآن.',
+              payload: 'live_quizzes',
+            );
+          },
+        )
+        .subscribe();
+
+    debugPrint(
+      'RealtimeListenerService: listening to live quizzes for $userId...',
     );
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sign_education/data/db/db_helper_lessons.dart';
 import 'package:sign_education/data/db/db_helper_lesson_strategies.dart';
 import 'package:sign_education/data/models/lesson_strategy_model.dart';
 import 'package:sign_education/utils/strategy_catalog.dart';
@@ -7,11 +8,13 @@ import 'package:sign_education/utils/strategy_functions.dart';
 class LessonStrategyEditorPage extends StatefulWidget {
   final String lessonId;
   final LessonStrategyModel? existing;
+  final String? initialLessonText;
 
   const LessonStrategyEditorPage({
     super.key,
     required this.lessonId,
     this.existing,
+    this.initialLessonText,
   });
 
   @override
@@ -32,6 +35,20 @@ class _LessonStrategyEditorPageState extends State<LessonStrategyEditorPage> {
     super.initState();
     _strategyType = widget.existing?.strategyType;
     _titleController.text = widget.existing?.title ?? '';
+    _textController.text = widget.initialLessonText?.trim() ?? '';
+    _loadLessonTextIfNeeded();
+  }
+
+  Future<void> _loadLessonTextIfNeeded() async {
+    if (_textController.text.trim().isNotEmpty) return;
+    try {
+      final lesson = await DbHelperLessons.getLessonById(widget.lessonId);
+      final text = lesson?.description?.trim() ?? '';
+      if (!mounted || text.isEmpty) return;
+      setState(() => _textController.text = text);
+    } catch (_) {
+      // ignore: best-effort prefill
+    }
   }
 
   @override
@@ -214,4 +231,3 @@ class _LessonStrategyEditorPageState extends State<LessonStrategyEditorPage> {
     );
   }
 }
-

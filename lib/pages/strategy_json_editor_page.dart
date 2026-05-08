@@ -46,6 +46,10 @@ class _StrategyJsonEditorPageState extends State<StrategyJsonEditorPage> {
         return 'Comparison Table: عدّل الأعمدة/الصفوف/الخلايا داخل JSON.';
       case 'type_11':
         return 'Triangle: عدّل الأجزاء داخل JSON.';
+      case 'type_13':
+        return 'الأسئلة الصحفية: عدّل الأسئلة والأجوبة (من/ماذا/متى/أين/لماذا/كيف).';
+      case 'type_14':
+        return 'القصة التعليمية: عدّل العنوان والشخصيات والأحداث والخلاصة.';
       default:
         return 'عدّل JSON ثم احفظ.';
     }
@@ -180,4 +184,3 @@ class _StrategyJsonEditorPageState extends State<StrategyJsonEditorPage> {
     );
   }
 }
-

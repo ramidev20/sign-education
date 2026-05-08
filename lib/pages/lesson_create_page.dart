@@ -1,6 +1,3 @@
-import 'dart:io';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_lessons.dart';
 import 'package:sign_education/data/models/class_group_model.dart';
@@ -8,7 +5,6 @@ import 'package:sign_education/data/models/lesson_model.dart';
 import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/pages/lesson_select_group_page.dart';
 import 'package:sign_education/utils/app_theme.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LessonCreatePage extends StatefulWidget {
   final UserModel user;
@@ -24,24 +20,11 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
   String? title;
   String? subject;
   String? description;
-  String? filePath;
   bool isUploading = false;
 
   String? selectedGroupId;
   ClassGroupModel? _selectedGroup;
-  String? fileUrl;
 
-  Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ["pdf", "doc", "docx"],
-    );
-    if (result != null && result.files.single.path != null) {
-      setState(() {
-        filePath = result.files.single.path!;
-      });
-    }
-  }
 
   Future<void> _selectGroup() async {
     final result = await Navigator.push<ClassGroupModel>(
@@ -70,47 +53,8 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
     }
   }
 
-  Future<String?> _uploadFileFromPath() async {
-    if (filePath == null || filePath!.isEmpty) return null;
-    final file = File(filePath!);
-    if (!await file.exists()) return null;
-
-    final fileName =
-        "${DateTime.now().millisecondsSinceEpoch}_${file.uri.pathSegments.last}";
-
-    try {
-      setState(() => isUploading = true);
-      await Supabase.instance.client.storage.from('lessons').upload(
-            fileName,
-            file,
-          );
-      final publicUrl =
-          Supabase.instance.client.storage.from('lessons').getPublicUrl(
-                fileName,
-              );
-      setState(() {
-        isUploading = false;
-        fileUrl = publicUrl;
-      });
-      return publicUrl;
-    } catch (e) {
-      setState(() => isUploading = false);
-      if (!mounted) return null;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("❌ فشل رفع الملف: $e")));
-      return null;
-    }
-  }
-
   Future<void> _saveLesson() async {
     if (!_formKey.currentState!.validate()) return;
-    if (filePath == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("الرجاء اختيار ملف الدرس")));
-      return;
-    }
     if (selectedGroupId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("الرجاء اختيار المجموعة")),
@@ -119,11 +63,6 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
     }
 
     setState(() => isUploading = true);
-    final uploadedUrl = await _uploadFileFromPath();
-    if (uploadedUrl == null) {
-      setState(() => isUploading = false);
-      return;
-    }
 
     final lesson = LessonModel(
       subject: subject!,
@@ -131,8 +70,7 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
       teacherId: widget.user.id,
       classGroupId: selectedGroupId!,
       title: title!,
-      description: description,
-      fileUrl: uploadedUrl,
+      description: description?.trim(),
       createdAt: DateTime.now(),
     );
 
@@ -187,27 +125,14 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  decoration: _inputDecoration("الوصف (اختياري)", colorScheme),
+                  decoration: _inputDecoration("نص الدرس", colorScheme).copyWith(
+                    alignLabelWithHint: true,
+                  ),
                   onChanged: (v) => description = v,
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: _pickFile,
-                  icon: const Icon(Icons.attach_file),
-                  label: Text(
-                    filePath == null
-                        ? "اختر ملف الدرس"
-                        : "تم اختيار الملف: ${filePath!.split('/').last}",
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 55),
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: colorScheme.onPrimary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
+                  maxLines: 10,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? "أدخل نص الدرس"
+                      : null,
                 ),
                 const SizedBox(height: 30),
                 const Text(
@@ -293,4 +218,3 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
     );
   }
 }
-

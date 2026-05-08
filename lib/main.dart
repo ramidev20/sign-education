@@ -16,6 +16,8 @@ import 'package:sign_education/utils/notification_service.dart';
 import 'package:sign_education/utils/realtime_listener_service.dart';
 import 'package:sign_education/pages/lessons_page.dart';
 import 'package:sign_education/pages/assignments_page.dart';
+import 'package:sign_education/data/db/db_helper_users.dart';
+import 'package:sign_education/pages/quizzes_page.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -45,6 +47,20 @@ Future<void> main() async {
       } else if (payload == 'assignments') {
         navigatorKey.currentState?.push(
           MaterialPageRoute(builder: (_) => AssignmentsPage(user: user)),
+        );
+      } else if (payload == 'live_quizzes') {
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(builder: (_) => QuizzesPage(user: user)),
+        );
+      } else if (payload == 'delivered_assignments') {
+        // For teachers: open deliveries tab. For students: open delivered tab.
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (_) => AssignmentsPage(
+              user: user,
+              initialTabIndex: 1,
+            ),
+          ),
         );
       }
     },
@@ -143,13 +159,25 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _checkUser() async {
     await Future.delayed(const Duration(seconds: 2));
-    final user = await StorageService.getUser();
+    var user = await StorageService.getUser();
+    final session = Supabase.instance.client.auth.currentSession;
 
     if (!mounted) return;
 
-    if (user != null) {
+    final hasValidSession =
+        session != null && session.user.id == (user?.id ?? session.user.id);
+
+    if (user == null && session?.user != null) {
+      user = await DbHelperUsers.getUserById(session!.user.id);
+      if (user != null) {
+        await StorageService.saveUser(user);
+      }
+    }
+
+    if (user != null && hasValidSession) {
+      final resolvedUser = user;
       // ✅ Start realtime listeners globally here
-      RealtimeListenerService().start(user.id, user.role);
+      RealtimeListenerService().start(resolvedUser.id, resolvedUser.role);
 
       // ✅ Check for any new content since last app open
       await StorageService.checkForNewContent();
@@ -159,10 +187,12 @@ class _SplashScreenState extends State<SplashScreen>
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => MyHomePage(title: "المنصة التعليمية", user: user),
+          builder: (_) =>
+              MyHomePage(title: "المنصة التعليمية", user: resolvedUser),
         ),
       );
     } else {
+      await StorageService.clearUser();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const LoginPage()),

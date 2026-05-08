@@ -17,7 +17,7 @@ Future<Map<String, dynamic>> generateMindMapFromText(String text) async {
         "Authorization": "Bearer $apiKey",
       },
       body: jsonEncode({
-        "model": "deepseek/deepseek-r1",
+        "model": "poolside/laguna-xs.2:free",
         "messages": [
           {"role": "system", "content": mindmap_prompt},
           {
@@ -56,7 +56,7 @@ Future<Map<String, dynamic>> generatesixHatFromText(String text) async {
         "Authorization": "Bearer $apiKey",
       },
       body: jsonEncode({
-        "model": "deepseek/deepseek-r1",
+        "model": "poolside/laguna-xs.2:free",
         "messages": [
           {"role": "system", "content": six_hat_prompt},
           {

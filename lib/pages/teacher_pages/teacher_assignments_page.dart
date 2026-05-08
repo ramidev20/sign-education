@@ -6,12 +6,16 @@ import 'package:sign_education/data/labels_data.dart';
 import 'package:sign_education/pages/teacher_pages/assigment_add.dart';
 import 'package:sign_education/pages/teacher_pages/assignment_deliveries_page.dart';
 import 'package:sign_education/utils/app_theme.dart';
-import 'package:sign_education/utils/pdf_viewer_page.dart';
 
 class TeacherAssignmentsPage extends StatefulWidget {
   final UserModel user;
+  final int initialTabIndex;
 
-  const TeacherAssignmentsPage({super.key, required this.user});
+  const TeacherAssignmentsPage({
+    super.key,
+    required this.user,
+    this.initialTabIndex = 0,
+  });
 
   @override
   State<TeacherAssignmentsPage> createState() => _TeacherAssignmentsPageState();
@@ -46,10 +50,21 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     });
   }
 
+  String _fmtDateTime(DateTime dt) {
+    final y = dt.year.toString().padLeft(4, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    return '$y-$m-$d $hh:$mm';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final initialIndex = widget.initialTabIndex.clamp(0, 2).toInt();
     return DefaultTabController(
       length: 3,
+      initialIndex: initialIndex,
       child: Builder(
         builder: (context) {
           final tabController = DefaultTabController.of(context);
@@ -110,43 +125,80 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
   }
 
   Widget _buildActiveAssignmentsTab() => ListView(
-    padding: const EdgeInsets.all(16),
-    children: currentAssignments.map((a) {
-      return Card(
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(16),
-          title: Text(a.title ?? ''),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("المادة: ${subjectLabels[a.subject]}"),
-              Text("التسليم: ${a.completeAt.toString().substring(0, 16)}"),
-              Text("الحالة: ${statusLabels[a.status]}"),
-            ],
-          ),
-          onTap: () {
-            if (a.fileUrl != null && a.fileUrl!.endsWith(".pdf")) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      PdfViewerPage(filePath: a.fileUrl!, title: a.title ?? ""),
-                ),
-              );
-            }
-          },
-        ),
+        padding: const EdgeInsets.all(16),
+        children: currentAssignments.map((a) {
+          final title = (a.title ?? '').trim().isEmpty ? 'واجب' : a.title!.trim();
+          final qCount =
+              ((a.assignmentContentJson?['questions'] as List?) ?? const [])
+                  .length;
+          final due = _fmtDateTime(a.completeAt);
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      Chip(label: Text('المادة: ${subjectLabels[a.subject]}')),
+                      Chip(label: Text('عدد الأسئلة: $qCount')),
+                      Chip(label: Text('التسليم: $due')),
+                      Chip(label: Text('الحالة: ${statusLabels[a.status]}')),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.preview_outlined),
+                          label: const Text('التسليمات'),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => AssignmentDeliveriesPage(
+                                  assignmentId: a.assignmentId!,
+                                  title: a.title ?? '',
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
       );
-    }).toList(),
-  );
 
   Widget _buildDeliveriesTab() => ListView(
     padding: const EdgeInsets.all(16),
     children: currentAssignments.map((assignment) {
+      final qCount =
+          ((assignment.assignmentContentJson?['questions'] as List?) ?? const [])
+              .length;
       return Card(
         child: ListTile(
           title: Text(assignment.title ?? ''),
-          subtitle: Text("عدد التسليمات: ${assignment.submissionsCount ?? 0}"),
+          subtitle: Text(
+            "عدد التسليمات: ${assignment.submissionsCount ?? 0} • عدد الأسئلة: $qCount",
+          ),
           onTap: () {
             Navigator.push(
               context,

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:sign_education/data/db/db_helper_assigments.dart';
 import 'package:sign_education/data/models/assignment_delivery_model.dart';
 import 'package:sign_education/data/db/db_helper_deliveries.dart';
 import 'package:sign_education/utils/app_theme.dart';
-import 'package:sign_education/utils/pdf_viewer_page.dart';
 
 class AssignmentDeliveriesPage extends StatefulWidget {
   final String assignmentId;
@@ -21,11 +21,41 @@ class AssignmentDeliveriesPage extends StatefulWidget {
 
 class _AssignmentDeliveriesPageState extends State<AssignmentDeliveriesPage> {
   List<DeliveryModel> deliveries = [];
+  Map<String, Map<String, dynamic>> _questionById = {};
 
   @override
   void initState() {
     super.initState();
+    _loadAssignmentQuestions();
     fetchDeliveries();
+  }
+
+  Future<void> _loadAssignmentQuestions() async {
+    try {
+      final assignment =
+          await DbHelperAssignments.getAssignmentById(widget.assignmentId);
+      final raw = assignment?.assignmentContentJson?['questions'];
+      if (raw is! List) return;
+
+      final map = <String, Map<String, dynamic>>{};
+      for (final q in raw.whereType<Map>()) {
+        final qq = Map<String, dynamic>.from(q);
+        final id = (qq['id'] ?? '').toString();
+        if (id.isEmpty) continue;
+        map[id] = qq;
+      }
+
+      if (!mounted) return;
+      setState(() => _questionById = map);
+    } catch (_) {
+      // ignore (preview will fallback to generic labels)
+    }
+  }
+
+  String _formatAnswerValue(dynamic value) {
+    if (value is bool) return value ? 'صح' : 'خطأ';
+    if (value is List) return value.map((e) => e.toString()).join('، ');
+    return (value ?? '').toString();
   }
 
   Future<void> fetchDeliveries() async {
@@ -142,23 +172,70 @@ class _AssignmentDeliveriesPageState extends State<AssignmentDeliveriesPage> {
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.picture_as_pdf,
-                            color: AppTheme.brand,
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => PdfViewerPage(
-                                  filePath: d.fileUrl,
-                                  title: d.username,
+                        if ((d.answersJson?['answers'] as List?) != null)
+                          IconButton(
+                            icon: Icon(
+                              Icons.preview_outlined,
+                              color: AppTheme.brand,
+                            ),
+                            onPressed: () {
+                              showDialog<void>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: Text('إجابات ${d.username}'),
+                                  content: SizedBox(
+                                    width: 420,
+                                    child: ListView(
+                                      shrinkWrap: true,
+                                      children: [
+                                        ...((d.answersJson?['answers'] as List?) ??
+                                                const [])
+                                            .whereType<Map>()
+                                            .map(
+                                              (a) {
+                                                final aa =
+                                                    Map<String, dynamic>.from(a);
+                                                final qid =
+                                                    (aa['question_id'] ?? '')
+                                                        .toString();
+                                                final q =
+                                                    _questionById[qid] ?? <String, dynamic>{};
+                                                final prompt =
+                                                    (q['prompt'] ?? 'سؤال')
+                                                        .toString();
+                                                final type =
+                                                    (aa['type'] ?? '').toString();
+                                                final value = aa['value'];
+
+                                                return ListTile(
+                                                  title: Text(prompt),
+                                                  subtitle: Text(
+                                                    _formatAnswerValue(value),
+                                                  ),
+                                                  trailing: Text(
+                                                    type,
+                                                    style: TextStyle(
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurfaceVariant,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                      ],
+                                    ),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('إغلاق'),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            );
-                          },
-                        ),
+                              );
+                            },
+                          ),
                         PopupMenuButton<String>(
                           onSelected: (choice) async {
                             if (choice == 'accept') {

@@ -9,7 +9,7 @@ import 'package:sign_education/data/prompts.dart';
 const apiKey =
     "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";
 const url = "https://openrouter.ai/api/v1/chat/completions";
-const model = "inclusionai/ling-2.6-flash:free";
+const model = "poolside/laguna-xs.2:free";
 const model1 = "openai/gpt-3.5-turbo-16k";
 
 /// Common request timeout
@@ -22,6 +22,9 @@ Future<Map<String, dynamic>> _sendPrompt({
   required String userPrompt,
 }) async {
   try {
+    final languageHint = _isArabicText(userPrompt)
+        ? '\n\nOUTPUT LANGUAGE: Arabic (use Arabic terms, labels, and sentences).'
+        : '\n\nOUTPUT LANGUAGE: Match the input language.';
     final response = await http
         .post(
           Uri.parse(url),
@@ -36,7 +39,7 @@ Future<Map<String, dynamic>> _sendPrompt({
               {
                 "role": "user",
                 "content":
-                    "$userPrompt\n\n⚠️ Important: Output ONLY valid JSON. No markdown, no text before or after the JSON.",
+                    "$userPrompt$languageHint\n\n⚠️ Important: Output ONLY valid JSON. No markdown, no text before or after the JSON.",
               },
             ],
           }),
@@ -66,6 +69,11 @@ Future<Map<String, dynamic>> _sendPrompt({
     debugPrint("❌ Error: $e");
     throw Exception("Error generating data: $e");
   }
+}
+
+bool _isArabicText(String text) {
+  // Arabic unicode block (basic + supplement coverage for common text)
+  return RegExp(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]').hasMatch(text);
 }
 
 Future<Map<String, dynamic>> generateMindMapFromText(String text) async {

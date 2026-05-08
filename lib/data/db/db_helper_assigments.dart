@@ -50,7 +50,7 @@ class DbHelperAssignments {
     final res = await supabase
         .from('assignments')
         .select(
-          'assignment_id, subject, teacher_id, class_group_id, title, description, status, file_url, created_at, complete_at, submissions_count',
+          'assignment_id, subject, teacher_id, class_group_id, title, description, status, file_url, assignment_content_json, created_at, complete_at, submissions_count',
         )
         .eq('class_group_id', classGroupId)
         .order('created_at', ascending: false)
@@ -66,7 +66,7 @@ class DbHelperAssignments {
     final res = await supabase
         .from('assignments')
         .select(
-          'assignment_id, subject, teacher_id, class_group_id, title, description, status, file_url, created_at, complete_at, submissions_count',
+          'assignment_id, subject, teacher_id, class_group_id, title, description, status, file_url, assignment_content_json, created_at, complete_at, submissions_count',
         )
         .eq('teacher_id', teacherId)
         .order('created_at', ascending: false)

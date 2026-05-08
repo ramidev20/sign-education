@@ -251,37 +251,54 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
       ),
       body: ListView(
         children: [
-          const SizedBox(height: 16),
-          DefaultAvatar(
-            avatarColor: widget.group.avatarColor,
-            name: widget.group.name,
-            radius: 36,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            widget.group.name,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onBackground,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  children: [
+                    DefaultAvatar(
+                      avatarColor: widget.group.avatarColor,
+                      name: widget.group.name,
+                      radius: 36,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.group.name,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onBackground,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "${widget.group.level} - ${widget.group.branch}",
+                      style: TextStyle(
+                        color: theme.colorScheme.onBackground.withOpacity(0.6),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        Chip(label: Text("${_members.length} عضو")),
+                        if (_teacher != null)
+                          const Chip(label: Text("إشراف المعلم")),
+                        if (isTeacher)
+                          const InputChip(
+                            selected: true,
+                            label: Text("وضع الإدارة"),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            "${widget.group.level} - ${widget.group.branch}",
-            style: TextStyle(
-              color: theme.colorScheme.onBackground.withOpacity(0.6),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            "${_members.length} عضو",
-            style: TextStyle(
-              color: theme.colorScheme.onBackground.withOpacity(0.6),
-            ),
-            textAlign: TextAlign.center,
           ),
           const Divider(thickness: 1),
 

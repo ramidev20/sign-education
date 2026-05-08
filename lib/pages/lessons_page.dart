@@ -25,6 +25,8 @@ class _LessonsPageState extends State<LessonsPage> {
   bool _loading = true;
   List<String> _groupIds = [];
   String? _selectedStudentSubject;
+  bool _studentOffline = false;
+  String? _studentOnlineError;
   static const int _pageSize = 50;
 
   @override
@@ -39,12 +41,33 @@ class _LessonsPageState extends State<LessonsPage> {
     try {
       final groups = await DbHelperClasses.getClassesByStudent(widget.user.id);
       _groupIds = groups.map((g) => g.classGroupId).where((id) => id.isNotEmpty).toList();
+      _studentOffline = false;
+      _studentOnlineError = null;
       await _refreshStudent();
     } catch (e) {
+      final cached = await OfflineLessonCache.getSavedLessons();
       if (!mounted) return;
-      setState(() => _loading = false);
+
+      if (cached.isNotEmpty) {
+        setState(() {
+          _lessons
+            ..clear()
+            ..addAll(cached);
+          _studentOffline = true;
+          _studentOnlineError = '$e';
+          _loading = false;
+          _selectedStudentSubject = null;
+        });
+        return;
+      }
+
+      setState(() {
+        _studentOffline = true;
+        _studentOnlineError = '$e';
+        _loading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر تحميل المجموعات: $e')),
+        SnackBar(content: Text('تعذر تحميل الدروس عبر الإنترنت: $e')),
       );
     }
   }
@@ -53,7 +76,13 @@ class _LessonsPageState extends State<LessonsPage> {
     setState(() => _loading = true);
     _lessons.clear();
     if (_groupIds.isEmpty) {
-      setState(() => _loading = false);
+      final cached = await OfflineLessonCache.getSavedLessons();
+      if (!mounted) return;
+      setState(() {
+        _lessons.addAll(cached);
+        _studentOffline = true;
+        _loading = false;
+      });
       return;
     }
 
@@ -69,8 +98,21 @@ class _LessonsPageState extends State<LessonsPage> {
         if (page.length < _pageSize) break;
         offset += page.length;
       }
+      _studentOffline = false;
+      _studentOnlineError = null;
     } catch (e) {
+      final cached = await OfflineLessonCache.getSavedLessons();
       if (!mounted) return;
+      if (cached.isNotEmpty) {
+        setState(() {
+          _lessons
+            ..clear()
+            ..addAll(cached);
+          _studentOffline = true;
+          _studentOnlineError = '$e';
+        });
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('تعذر تحميل الدروس: $e')),
       );
@@ -106,7 +148,7 @@ class _LessonsPageState extends State<LessonsPage> {
   Widget _buildStudentView() {
     if (_loading) return const AppLoading();
 
-    if (_groupIds.isEmpty) {
+    if (!_studentOffline && _groupIds.isEmpty) {
       return const AppEmptyState(
         icon: Icons.school_outlined,
         title: 'أنت لست مسجلاً في أي قسم بعد',
@@ -117,7 +159,7 @@ class _LessonsPageState extends State<LessonsPage> {
     if (_lessons.isEmpty) {
       return AppEmptyState(
         icon: Icons.menu_book_outlined,
-        title: 'لا توجد دروس متاحة لك حالياً',
+        title: _studentOffline ? 'لا توجد دروس محفوظة دون اتصال' : 'لا توجد دروس متاحة لك حالياً',
         actionLabel: 'تحديث',
         onAction: _refreshStudent,
       );
@@ -125,22 +167,42 @@ class _LessonsPageState extends State<LessonsPage> {
 
     if (_selectedStudentSubject == null) {
       final subjects = _allStudentSubjects(_lessons);
-      return _LessonsSubjectsGrid(
+      final grid = _LessonsSubjectsGrid(
         title: 'اختر المادة',
         subjects: subjects,
         onTap: (subjectId) {
           setState(() => _selectedStudentSubject = subjectId);
         },
       );
+      if (!_studentOffline) return grid;
+      return Column(
+        children: [
+          _OfflineArchiveBanner(
+            onRefreshOnline: _refreshStudent,
+            errorText: _studentOnlineError,
+          ),
+          Expanded(child: grid),
+        ],
+      );
     }
 
     final selected = _selectedStudentSubject!;
     final filtered = _lessons.where((l) => l.subject == selected).toList();
-    return _LessonsBySubjectList(
+    final list = _LessonsBySubjectList(
       subjectId: selected,
       lessons: filtered,
       onBackToSubjects: () => setState(() => _selectedStudentSubject = null),
       onOpenLesson: _viewLessonPdf,
+    );
+    if (!_studentOffline) return list;
+    return Column(
+      children: [
+        _OfflineArchiveBanner(
+          onRefreshOnline: _refreshStudent,
+          errorText: _studentOnlineError,
+        ),
+        Expanded(child: list),
+      ],
     );
   }
 
@@ -541,7 +603,7 @@ class _LessonsBySubjectList extends StatelessWidget {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.picture_as_pdf_outlined),
+                            const Icon(Icons.text_snippet_outlined),
                             if (onDeleteLesson != null) ...[
                               const SizedBox(width: 4),
                               IconButton(

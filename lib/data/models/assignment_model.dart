@@ -6,7 +6,8 @@ class AssignmentModel {
   final String classGroupId; // FK → class/group id (students assigned)
   final String? title; // Optional title
   final String? description; // Optional description
-  final String? fileUrl; // Optional storage file (e.g., Supabase storage path)
+  final String? fileUrl; // Legacy (kept for backward compatibility)
+  final Map<String, dynamic>? assignmentContentJson; // Dynamic questions payload
   final String status; // status completed or not
   final DateTime createdAt;
   final DateTime completeAt;
@@ -21,6 +22,7 @@ class AssignmentModel {
     this.title,
     this.description,
     this.fileUrl,
+    this.assignmentContentJson,
     required this.status,
     required this.createdAt,
     required this.completeAt,
@@ -37,6 +39,9 @@ class AssignmentModel {
       title: map['title'],
       description: map['description'],
       fileUrl: map['file_url'],
+      assignmentContentJson: map['assignment_content_json'] is Map
+          ? Map<String, dynamic>.from(map['assignment_content_json'])
+          : null,
       status: map['status'],
       createdAt: DateTime.tryParse(map['created_at'] ?? '') ?? DateTime.now(),
       completeAt: DateTime.tryParse(map['complete_at'] ?? '') ?? DateTime.now(),
@@ -53,6 +58,7 @@ class AssignmentModel {
       'title': title,
       'description': description,
       'file_url': fileUrl,
+      'assignment_content_json': assignmentContentJson,
       'status': status,
       'created_at': createdAt.toIso8601String(),
       'complete_at': completeAt.toIso8601String(),

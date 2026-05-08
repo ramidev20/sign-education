@@ -1,8 +1,4 @@
-import 'dart:io';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sign_education/data/db/db_helper_lessons.dart';
 import 'package:sign_education/data/models/lesson_model.dart';
 
@@ -16,11 +12,11 @@ class LessonEditPage extends StatefulWidget {
 
 class _LessonEditPageState extends State<LessonEditPage> {
   final _formKey = GlobalKey<FormState>();
+  final _contentController = TextEditingController();
 
   late String _title;
   late String _subject;
   String? _description;
-  String? _filePath;
   bool _saving = false;
 
   @override
@@ -29,28 +25,13 @@ class _LessonEditPageState extends State<LessonEditPage> {
     _title = widget.lesson.title ?? '';
     _subject = widget.lesson.subject;
     _description = widget.lesson.description;
+    _contentController.text = widget.lesson.description ?? '';
   }
 
-  Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ["pdf", "doc", "docx"],
-    );
-    if (result != null && result.files.single.path != null) {
-      setState(() => _filePath = result.files.single.path!);
-    }
-  }
-
-  Future<String?> _uploadFileFromPath() async {
-    if (_filePath == null || _filePath!.isEmpty) return null;
-    final file = File(_filePath!);
-    if (!await file.exists()) return null;
-
-    final fileName =
-        "${DateTime.now().millisecondsSinceEpoch}_${file.uri.pathSegments.last}";
-
-    await Supabase.instance.client.storage.from('lessons').upload(fileName, file);
-    return Supabase.instance.client.storage.from('lessons').getPublicUrl(fileName);
+  @override
+  void dispose() {
+    _contentController.dispose();
+    super.dispose();
   }
 
   Future<void> _save() async {
@@ -59,17 +40,13 @@ class _LessonEditPageState extends State<LessonEditPage> {
 
     setState(() => _saving = true);
     try {
-      final newUrl = await _uploadFileFromPath();
-
       await DbHelperLessons.updateLesson(
         widget.lesson.lessonId!,
         {
           'title': _title,
           'subject': _subject,
-          'description': _description,
+          'description': _contentController.text.trim(),
         },
-        oldFileUrl: widget.lesson.fileUrl,
-        newFileUrl: newUrl,
       );
 
       final updated = await DbHelperLessons.getLessonById(widget.lesson.lessonId!);
@@ -143,24 +120,16 @@ class _LessonEditPageState extends State<LessonEditPage> {
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
-                  initialValue: _description,
+                  controller: _contentController,
                   decoration: const InputDecoration(
-                    labelText: 'الوصف (اختياري)',
+                    labelText: 'نص الدرس',
                     alignLabelWithHint: true,
                     border: OutlineInputBorder(),
                   ),
-                  maxLines: 3,
-                  onChanged: (v) => _description = v,
-                ),
-                const SizedBox(height: 14),
-                OutlinedButton.icon(
-                  onPressed: _saving ? null : _pickFile,
-                  icon: const Icon(Icons.attach_file),
-                  label: Text(
-                    _filePath == null
-                        ? 'تغيير ملف الدرس (اختياري)'
-                        : 'تم اختيار: ${_filePath!.split('/').last}',
-                  ),
+                  maxLines: 10,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'أدخل نص الدرس'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 FilledButton.icon(
@@ -188,4 +157,3 @@ class _LessonEditPageState extends State<LessonEditPage> {
     );
   }
 }
-

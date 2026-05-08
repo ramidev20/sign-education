@@ -5,59 +5,59 @@ class AboutUsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('📌 من نحن – منصة الإشارة التعليمية'),
+        title: const Text('من نحن - منصة الإشارة التعليمية'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [
+              cs.primary.withOpacity(0.08),
+              cs.tertiary.withOpacity(0.05),
+              cs.surface,
+            ],
+          ),
+        ),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
           children: const [
-            Section(
-              emoji: '💡',
-              title: 'تعريف مختصر',
+            _HeroCard(),
+            SizedBox(height: 14),
+            _AboutBlock(
+              title: 'الرؤية',
+              icon: Icons.visibility_outlined,
               content:
-                  'منصة الإشارة هي منصة تعليمية رقمية تهدف إلى تعليم لغة الإشارة العربية بطريقة تفاعلية تجمع بين الدروس، الواجبات، والمناقشات بين الطلاب والمعلمين. تسعى المنصة إلى تمكين الجميع من التواصل بسهولة مع فئة الصم وضعاف السمع، وتعزيز دمجهم في المجتمع.',
+                  'نحو تجربة تعليمية عربية شاملة تجعل لغة الإشارة جزءاً طبيعياً من الصف الدراسي.',
             ),
-            Section(
-              emoji: '🌍',
-              title: 'رؤيتنا',
+            _AboutBlock(
+              title: 'الرسالة',
+              icon: Icons.flag_outlined,
               content:
-                  'أن نصبح المنصة التعليمية الأولى في العالم العربي لتعلم لغة الإشارة، من خلال تجربة تعلم مبتكرة، سهلة، وشاملة تتيح للمتعلمين التفاعل وتبادل المعرفة في بيئة محفزة وداعمة.',
+                  'نساعد المعلم والطالب على التعلم بالممارسة عبر الدروس، الاستراتيجيات، الواجبات، والتفاعل المستمر.',
             ),
-            Section(
-              emoji: '🎯',
-              title: 'رسالتنا',
+            _AboutBlock(
+              title: 'ما الذي يميزنا؟',
+              icon: Icons.auto_awesome_outlined,
               content:
-                  'تسهيل تعلم لغة الإشارة عبر أدوات رقمية تفاعلية تجمع بين التعليم الذاتي والمجتمعي، وتشجع على الممارسة اليومية والتعاون بين الطلاب والمعلمين، بهدف نشر ثقافة التواصل الشامل.',
+                  'استراتيجيات قابلة للتحرير، واجبات ديناميكية، ودعم للتعلم دون اتصال ضمن تطبيق واحد.',
             ),
-            Section(
-              emoji: '⚙️',
-              title: 'قيمنا',
+            _AboutBlock(
+              title: 'لمن صُممت المنصة؟',
+              icon: Icons.groups_outlined,
               content:
-                  'الشمول: نؤمن بحق الجميع في التعلم والتواصل. \n'
-                  'التفاعل: نتعلم بالمشاركة والممارسة. \n'
-                  'الابتكار: نستخدم التكنولوجيا لتسهيل الفهم والتطبيق. \n'
-                  'الاحترام: نعزز ثقافة التواصل الإيجابي بين الجميع. \n'
-                  'الاستمرارية: نطور المحتوى باستمرار ليتناسب مع احتياجات المتعلمين. \n',
+                  'للمعلمين، الطلاب، والمؤسسات التعليمية التي تحتاج أدوات عملية وحديثة لتعليم لغة الإشارة.',
             ),
-            Section(
-              emoji: '🛤️',
-              title: 'قصتنا',
+            _AboutBlock(
+              title: 'فريق العمل',
+              icon: Icons.handshake_outlined,
               content:
-                  'انبثقت فكرة منصة الإشارة من الحاجة إلى وسيلة رقمية سهلة لتعلم لغة الإشارة بشكل مبسط وتفاعلي. لاحظنا قلة الموارد العربية المتخصصة في هذا المجال، فقررنا إنشاء منصة تعليمية تجمع بين الدروس المرئية، الواجبات العملية، والمناقشات بين الطلاب لتبادل الخبرات وتحفيز التعلم الجماعي.',
-            ),
-            Section(
-              emoji: '👥',
-              title: 'من يقف وراء المنصة؟',
-              content:
-                  'نحن فريق متنوع من المعلمين، مطوري البرمجيات، وخبراء في تعليم لغة الإشارة. نعمل مع مختصين في التربية الخاصة ومجتمع الصم لضمان دقة المحتوى وجودة التجربة التعليمية.',
-            ),
-            Section(
-              emoji: '📞',
-              title: 'تواصل معنا',
-              content:
-                  'هل ترغب في الانضمام إلى مجتمعنا أو لديك اقتراح لتطوير المنصة؟ \n 📩 يسعدنا تواصلك معنا عبر البريد أو منصاتنا الاجتماعية!',
+                  'فريق يجمع بين التربية والتقنية والتصميم، ويتعاون مع مختصين في التربية الخاصة ومجتمع الصم.',
             ),
           ],
         ),
@@ -66,35 +66,110 @@ class AboutUsPage extends StatelessWidget {
   }
 }
 
-class Section extends StatelessWidget {
-  final String emoji;
-  final String title;
-  final String content;
-
-  const Section({
-    super.key,
-    required this.emoji,
-    required this.title,
-    required this.content,
-  });
+class _HeroCard extends StatelessWidget {
+  const _HeroCard();
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          colors: [
+            cs.primary.withOpacity(0.16),
+            cs.secondary.withOpacity(0.14),
+          ],
+        ),
+        border: Border.all(color: cs.primary.withOpacity(0.3)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '$emoji $title',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              Icon(Icons.sign_language_outlined, color: cs.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Sign Education',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8.0),
-          Text(content, style: Theme.of(context).textTheme.bodyLarge),
+          const SizedBox(height: 10),
+          Text(
+            'تعليم لغة الإشارة بأسلوب تفاعلي حديث، مع أدوات ذكية تساعد المعلم والطالب على التقدم بشكل واضح.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: const [
+              Chip(label: Text('دروس تفاعلية')),
+              Chip(label: Text('استراتيجيات ذكية')),
+              Chip(label: Text('واجبات ديناميكية')),
+            ],
+          ),
         ],
       ),
     );
   }
 }
+
+class _AboutBlock extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final String content;
+
+  const _AboutBlock({
+    required this.title,
+    required this.icon,
+    required this.content,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: cs.primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: cs.primary, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(content),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

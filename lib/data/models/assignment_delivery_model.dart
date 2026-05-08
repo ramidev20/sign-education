@@ -4,6 +4,7 @@ class DeliveryModel {
   final String userId;
   final String username;
   final String fileUrl;
+  final Map<String, dynamic>? answersJson;
   final DateTime deliveryDate;
   final String status;
   final String statusComment;
@@ -14,6 +15,7 @@ class DeliveryModel {
     required this.userId,
     required this.username,
     required this.fileUrl,
+    this.answersJson,
     required this.deliveryDate,
     required this.status,
     required this.statusComment,
@@ -25,7 +27,10 @@ class DeliveryModel {
       assignmentId: map['assignment_id'],
       userId: map['user_id'],
       username: map['username'],
-      fileUrl: map['file_url'],
+      fileUrl: map['file_url'] ?? '',
+      answersJson: map['answers_json'] is Map
+          ? Map<String, dynamic>.from(map['answers_json'])
+          : null,
       deliveryDate: DateTime.parse(map['delivery_date']),
       status: map['status'] ?? 'pending',
       statusComment: map['status_comment'] ?? '',
@@ -39,6 +44,7 @@ class DeliveryModel {
       'user_id': userId,
       'username': username,
       'file_url': fileUrl,
+      'answers_json': answersJson,
       'delivery_date': deliveryDate.toIso8601String(),
       'status': status,
       'status_comment': statusComment,
