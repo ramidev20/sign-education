@@ -36,7 +36,7 @@ class _NewGroupPageState extends State<NewGroupPage> {
 
   /// Show the FlexColorPicker dialog
   Future<void> _pickColor() async {
-    final Color? pickedColor = await showColorPickerDialog(
+    final Color pickedColor = await showColorPickerDialog(
       context,
       _avatarColor,
       title: const Text("اختر لونًا"),
@@ -62,7 +62,7 @@ class _NewGroupPageState extends State<NewGroupPage> {
     if (!_formKey.currentState!.validate() || _selectedSubject == null) return;
 
     final classGroupId =
-        "${levelCtrl.text}_${branchCtrl.text}_${_selectedSubject}";
+        "${levelCtrl.text}_${branchCtrl.text}_$_selectedSubject";
 
     final hexColor =
         '#${_avatarColor.value.toRadixString(16).substring(2).toUpperCase()}';
@@ -93,9 +93,7 @@ class _NewGroupPageState extends State<NewGroupPage> {
               /// Group Name
               TextFormField(
                 controller: nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: "اسم المجموعة",
-                ),
+                decoration: const InputDecoration(labelText: "اسم المجموعة"),
                 validator: (v) =>
                     v == null || v.isEmpty ? "أدخل اسم المجموعة" : null,
               ),
@@ -107,9 +105,7 @@ class _NewGroupPageState extends State<NewGroupPage> {
                   Expanded(
                     child: TextFormField(
                       controller: levelCtrl,
-                      decoration: const InputDecoration(
-                        labelText: "المستوى",
-                      ),
+                      decoration: const InputDecoration(labelText: "المستوى"),
                       validator: (v) =>
                           v == null || v.isEmpty ? "أدخل المستوى" : null,
                     ),
@@ -118,9 +114,7 @@ class _NewGroupPageState extends State<NewGroupPage> {
                   Expanded(
                     child: TextFormField(
                       controller: branchCtrl,
-                      decoration: const InputDecoration(
-                        labelText: "الشعبة",
-                      ),
+                      decoration: const InputDecoration(labelText: "الشعبة"),
                       validator: (v) =>
                           v == null || v.isEmpty ? "أدخل الشعبة" : null,
                     ),
@@ -131,10 +125,8 @@ class _NewGroupPageState extends State<NewGroupPage> {
 
               /// Subject dropdown
               DropdownButtonFormField<String>(
-                value: _selectedSubject,
-                decoration: const InputDecoration(
-                  labelText: "المادة",
-                ),
+                initialValue: _selectedSubject,
+                decoration: const InputDecoration(labelText: "المادة"),
                 items: _subjects
                     .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                     .toList(),

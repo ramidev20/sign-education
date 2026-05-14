@@ -97,7 +97,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
               ],
             ),
             floatingActionButton: AnimatedBuilder(
-              animation: tabController!,
+              animation: tabController,
               builder: (context, _) {
                 return tabController.index == 0
                     ? FloatingActionButton(
@@ -125,73 +125,72 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
   }
 
   Widget _buildActiveAssignmentsTab() => ListView(
-        padding: const EdgeInsets.all(16),
-        children: currentAssignments.map((a) {
-          final title = (a.title ?? '').trim().isEmpty ? 'واجب' : a.title!.trim();
-          final qCount =
-              ((a.assignmentContentJson?['questions'] as List?) ?? const [])
-                  .length;
-          final due = _fmtDateTime(a.completeAt);
+    padding: const EdgeInsets.all(16),
+    children: currentAssignments.map((a) {
+      final title = (a.title ?? '').trim().isEmpty ? 'واجب' : a.title!.trim();
+      final qCount =
+          ((a.assignmentContentJson?['questions'] as List?) ?? const []).length;
+      final due = _fmtDateTime(a.completeAt);
 
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      return Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Text(
-                    title,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Chip(label: Text('المادة: ${subjectLabels[a.subject]}')),
-                      Chip(label: Text('عدد الأسئلة: $qCount')),
-                      Chip(label: Text('التسليم: $due')),
-                      Chip(label: Text('الحالة: ${statusLabels[a.status]}')),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.preview_outlined),
-                          label: const Text('التسليمات'),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => AssignmentDeliveriesPage(
-                                  assignmentId: a.assignmentId!,
-                                  title: a.title ?? '',
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+                  Chip(label: Text('المادة: ${subjectLabels[a.subject]}')),
+                  Chip(label: Text('عدد الأسئلة: $qCount')),
+                  Chip(label: Text('التسليم: $due')),
+                  Chip(label: Text('الحالة: ${statusLabels[a.status]}')),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.preview_outlined),
+                      label: const Text('التسليمات'),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AssignmentDeliveriesPage(
+                              assignmentId: a.assignmentId!,
+                              title: a.title ?? '',
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
-            ),
-          );
-        }).toList(),
+            ],
+          ),
+        ),
       );
+    }).toList(),
+  );
 
   Widget _buildDeliveriesTab() => ListView(
     padding: const EdgeInsets.all(16),
     children: currentAssignments.map((assignment) {
       final qCount =
-          ((assignment.assignmentContentJson?['questions'] as List?) ?? const [])
+          ((assignment.assignmentContentJson?['questions'] as List?) ??
+                  const [])
               .length;
       return Card(
         child: ListTile(

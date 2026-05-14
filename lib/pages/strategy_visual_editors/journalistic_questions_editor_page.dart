@@ -16,14 +16,7 @@ class _JournalisticQuestionsEditorPageState
   bool _saving = false;
   late List<Map<String, dynamic>> _items;
 
-  static const _types = <String>[
-    'what',
-    'when',
-    'where',
-    'why',
-    'how',
-    'who',
-  ];
+  static const _types = <String>['what', 'when', 'where', 'why', 'how', 'who'];
 
   @override
   void initState() {
@@ -51,9 +44,9 @@ class _JournalisticQuestionsEditorPageState
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('حدث خطأ: $e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -87,22 +80,19 @@ class _JournalisticQuestionsEditorPageState
                       'تعديل السؤال',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: _types.contains(type) ? type : _types.first,
+                      initialValue: _types.contains(type) ? type : _types.first,
                       decoration: const InputDecoration(
                         labelText: 'النوع',
                         border: OutlineInputBorder(),
                       ),
                       items: _types
                           .map(
-                            (t) => DropdownMenuItem(
-                              value: t,
-                              child: Text(t),
-                            ),
+                            (t) => DropdownMenuItem(value: t, child: Text(t)),
                           )
                           .toList(),
                       onChanged: (v) => setLocal(() => type = v ?? 'what'),
@@ -173,10 +163,12 @@ class _JournalisticQuestionsEditorPageState
               onPressed: _saving
                   ? null
                   : () => setState(
-                        () => _items.add(
-                          {'question': '', 'type': 'what', 'answer': ''},
-                        ),
-                      ),
+                      () => _items.add({
+                        'question': '',
+                        'type': 'what',
+                        'answer': '',
+                      }),
+                    ),
               icon: const Icon(Icons.add_rounded),
             ),
             IconButton(
@@ -239,4 +231,3 @@ class _JournalisticQuestionsEditorPageState
     );
   }
 }
-

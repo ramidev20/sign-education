@@ -41,9 +41,9 @@ class _LoginPageState extends State<LoginPage> {
         await _completeLogin(session!.user);
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('تعذر إكمال تسجيل الدخول: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('تعذر إكمال تسجيل الدخول: $e')));
       } finally {
         _handlingAuthChange = false;
       }
@@ -72,7 +72,7 @@ class _LoginPageState extends State<LoginPage> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => MyHomePage(title: "المنصة إشارة التعليمية", user: userModel),
+        builder: (_) => MyHomePage(title: "EduBridge", user: userModel),
       ),
     );
   }
@@ -96,14 +96,14 @@ class _LoginPageState extends State<LoginPage> {
       await _completeLogin(res.user!);
     } on AuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("⚠️ ${e.message}")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("⚠️ ${e.message}")));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("خطأ غير متوقع: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("خطأ غير متوقع: $e")));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -133,10 +133,7 @@ class _LoginPageState extends State<LoginPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text("المنصة التعليمية"),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text("المنصة التعليمية"), centerTitle: true),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -183,8 +180,9 @@ class _LoginPageState extends State<LoginPage> {
                         labelText: "كلمة المرور",
                         prefixIcon: Icon(Icons.lock_outline),
                       ),
-                      validator: (v) =>
-                          v == null || v.length < 6 ? "الحد الأدنى 6 أحرف" : null,
+                      validator: (v) => v == null || v.length < 6
+                          ? "الحد الأدنى 6 أحرف"
+                          : null,
                     ),
                     const SizedBox(height: 24),
                     FilledButton(
@@ -221,7 +219,9 @@ class _LoginPageState extends State<LoginPage> {
                           : () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => const SignupPage()),
+                                MaterialPageRoute(
+                                  builder: (_) => const SignupPage(),
+                                ),
                               );
                             },
                       style: TextButton.styleFrom(
@@ -240,4 +240,3 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-

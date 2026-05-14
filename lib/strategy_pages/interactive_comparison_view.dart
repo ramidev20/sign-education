@@ -18,10 +18,7 @@ class InteractiveComparisonView extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(title),
-          centerTitle: true,
-        ),
+        appBar: AppBar(title: Text(title), centerTitle: true),
         body: normalized.options.isEmpty || normalized.rows.isEmpty
             ? const Center(child: Text('لا توجد بيانات مقارنة لعرضها'))
             : LayoutBuilder(
@@ -45,11 +42,10 @@ class InteractiveComparisonView extends StatelessWidget {
                             dataRowMaxHeight: 132,
                             columnSpacing: 14,
                             horizontalMargin: 14,
-                            headingRowColor: MaterialStateProperty.all(
-                              Theme.of(context)
-                                  .colorScheme
-                                  .primaryContainer
-                                  .withOpacity(0.92),
+                            headingRowColor: WidgetStateProperty.all(
+                              Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer.withOpacity(0.92),
                             ),
                             columns: [
                               const DataColumn(
@@ -62,14 +58,18 @@ class InteractiveComparisonView extends StatelessWidget {
                                 DataColumn(
                                   label: Text(
                                     option,
-                                    style: const TextStyle(fontWeight: FontWeight.w800),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ),
                             ],
                             rows: [
-                              for (var rowIndex = 0;
-                                  rowIndex < normalized.rows.length;
-                                  rowIndex++)
+                              for (
+                                var rowIndex = 0;
+                                rowIndex < normalized.rows.length;
+                                rowIndex++
+                              )
                                 _buildRow(
                                   context: context,
                                   rowIndex: rowIndex,
@@ -123,9 +123,7 @@ class InteractiveComparisonView extends StatelessWidget {
                 color: col.isEven ? defaultBg : stripe.withOpacity(0.14),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(
-                row.values[options[col]]?.toString() ?? '-',
-              ),
+              child: Text(row.values[options[col]]?.toString() ?? '-'),
             ),
           ),
       ],
@@ -154,10 +152,7 @@ class InteractiveComparisonView extends StatelessWidget {
       rows.add(_ComparisonRow(criterion: criterion, values: values));
     }
 
-    return _ComparisonTable(
-      options: options.toList(),
-      rows: rows,
-    );
+    return _ComparisonTable(options: options.toList(), rows: rows);
   }
 
   Color _rowStripe(int rowIndex) {
@@ -177,18 +172,12 @@ class _ComparisonTable {
   final List<String> options;
   final List<_ComparisonRow> rows;
 
-  const _ComparisonTable({
-    required this.options,
-    required this.rows,
-  });
+  const _ComparisonTable({required this.options, required this.rows});
 }
 
 class _ComparisonRow {
   final String criterion;
   final Map<String, dynamic> values;
 
-  const _ComparisonRow({
-    required this.criterion,
-    required this.values,
-  });
+  const _ComparisonRow({required this.criterion, required this.values});
 }

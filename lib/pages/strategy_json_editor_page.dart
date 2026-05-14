@@ -22,7 +22,9 @@ class _StrategyJsonEditorPageState extends State<StrategyJsonEditorPage> {
   void initState() {
     super.initState();
     _controller = TextEditingController(
-      text: const JsonEncoder.withIndent('  ').convert(widget.strategy.contentJson),
+      text: const JsonEncoder.withIndent(
+        '  ',
+      ).convert(widget.strategy.contentJson),
     );
   }
 
@@ -72,9 +74,9 @@ class _StrategyJsonEditorPageState extends State<StrategyJsonEditorPage> {
     try {
       decoded = jsonDecode(raw);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('JSON غير صالح: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('JSON غير صالح: $e')));
       return;
     }
 
@@ -89,16 +91,16 @@ class _StrategyJsonEditorPageState extends State<StrategyJsonEditorPage> {
     try {
       await DbHelperLessonStrategies.updateStrategy(
         lessonStrategyId: widget.strategy.lessonStrategyId,
-        contentJson: Map<String, dynamic>.from(decoded as Map),
+        contentJson: Map<String, dynamic>.from(decoded),
       );
 
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر الحفظ: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('تعذر الحفظ: $e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }

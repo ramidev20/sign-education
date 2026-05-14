@@ -1,6 +1,6 @@
-# sign_education
+# EduBridge
 
-A new Flutter project.
+EduBridge learning platform.
 
 ## Getting Started
 

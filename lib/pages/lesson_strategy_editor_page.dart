@@ -94,6 +94,8 @@ class _LessonStrategyEditorPageState extends State<LessonStrategyEditorPage> {
     setState(() => _loading = true);
     try {
       final json = await _generate(type, text);
+      final jsonWithResultType = Map<String, dynamic>.from(json)
+        ..['_result_type'] = 'cardboard';
       final title = _titleController.text.trim().isEmpty
           ? null
           : _titleController.text.trim();
@@ -102,13 +104,13 @@ class _LessonStrategyEditorPageState extends State<LessonStrategyEditorPage> {
         await DbHelperLessonStrategies.createStrategy(
           lessonId: widget.lessonId,
           strategyType: type,
-          contentJson: json,
+          contentJson: jsonWithResultType,
           title: title,
         );
       } else {
         await DbHelperLessonStrategies.updateStrategy(
           lessonStrategyId: widget.existing!.lessonStrategyId,
-          contentJson: json,
+          contentJson: jsonWithResultType,
           title: title,
         );
       }
@@ -117,9 +119,9 @@ class _LessonStrategyEditorPageState extends State<LessonStrategyEditorPage> {
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('حدث خطأ: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -148,7 +150,7 @@ class _LessonStrategyEditorPageState extends State<LessonStrategyEditorPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     DropdownButtonFormField<String>(
-                      value: _strategyType,
+                      initialValue: _strategyType,
                       decoration: const InputDecoration(
                         labelText: 'الاستراتيجية',
                         border: OutlineInputBorder(),
@@ -161,8 +163,9 @@ class _LessonStrategyEditorPageState extends State<LessonStrategyEditorPage> {
                             ),
                           )
                           .toList(),
-                      onChanged:
-                          isEdit ? null : (v) => setState(() => _strategyType = v),
+                      onChanged: isEdit
+                          ? null
+                          : (v) => setState(() => _strategyType = v),
                       validator: (v) =>
                           v == null ? 'الرجاء اختيار الاستراتيجية' : null,
                     ),
@@ -201,7 +204,9 @@ class _LessonStrategyEditorPageState extends State<LessonStrategyEditorPage> {
                             )
                           : const Icon(Icons.auto_awesome),
                       label: Text(
-                        _loading ? 'جارٍ الإنشاء...' : (isEdit ? 'تحديث' : 'إنشاء'),
+                        _loading
+                            ? 'جارٍ الإنشاء...'
+                            : (isEdit ? 'تحديث' : 'إنشاء'),
                       ),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -221,9 +226,7 @@ class _LessonStrategyEditorPageState extends State<LessonStrategyEditorPage> {
             ),
             if (_loading)
               Positioned.fill(
-                child: Container(
-                  color: Colors.black.withOpacity(0.15),
-                ),
+                child: Container(color: Colors.black.withValues(alpha: 0.15)),
               ),
           ],
         ),

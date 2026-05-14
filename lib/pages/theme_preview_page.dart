@@ -14,10 +14,12 @@ class _ThemePreviewPageState extends State<ThemePreviewPage> {
   int radioValue = 0;
   String? dropdownValue = 'Beginner';
 
-  final TextEditingController nameController =
-      TextEditingController(text: 'Bruno Delorence');
-  final TextEditingController emailController =
-      TextEditingController(text: 'bruno@example.com');
+  final TextEditingController nameController = TextEditingController(
+    text: 'Bruno Delorence',
+  );
+  final TextEditingController emailController = TextEditingController(
+    text: 'bruno@example.com',
+  );
 
   @override
   void dispose() {
@@ -32,9 +34,7 @@ class _ThemePreviewPageState extends State<ThemePreviewPage> {
     final cs = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Theme & UI Kit Preview'),
-      ),
+      appBar: AppBar(title: const Text('Theme & UI Kit Preview')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
@@ -47,31 +47,16 @@ class _ThemePreviewPageState extends State<ThemePreviewPage> {
               spacing: 12,
               runSpacing: 12,
               children: [
-                ElevatedButton(
-                  onPressed: () {},
-                  child: const Text('Primary'),
-                ),
-                FilledButton(
-                  onPressed: () {},
-                  child: const Text('Filled'),
-                ),
-                OutlinedButton(
-                  onPressed: () {},
-                  child: const Text('Outlined'),
-                ),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text('Text'),
-                ),
+                ElevatedButton(onPressed: () {}, child: const Text('Primary')),
+                FilledButton(onPressed: () {}, child: const Text('Filled')),
+                OutlinedButton(onPressed: () {}, child: const Text('Outlined')),
+                TextButton(onPressed: () {}, child: const Text('Text')),
                 FilledButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.play_arrow_rounded),
                   label: const Text('With Icon'),
                 ),
-                ElevatedButton(
-                  onPressed: null,
-                  child: const Text('Disabled'),
-                ),
+                ElevatedButton(onPressed: null, child: const Text('Disabled')),
               ],
             ),
           ),
@@ -106,18 +91,24 @@ class _ThemePreviewPageState extends State<ThemePreviewPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: dropdownValue,
+                  initialValue: dropdownValue,
                   decoration: const InputDecoration(
                     labelText: 'Level',
                     prefixIcon: Icon(Icons.school_outlined),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'Beginner', child: Text('Beginner')),
+                    DropdownMenuItem(
+                      value: 'Beginner',
+                      child: Text('Beginner'),
+                    ),
                     DropdownMenuItem(
                       value: 'Intermediate',
                       child: Text('Intermediate'),
                     ),
-                    DropdownMenuItem(value: 'Advanced', child: Text('Advanced')),
+                    DropdownMenuItem(
+                      value: 'Advanced',
+                      child: Text('Advanced'),
+                    ),
                   ],
                   onChanged: (value) => setState(() => dropdownValue = value),
                 ),
@@ -182,8 +173,10 @@ class _ThemePreviewPageState extends State<ThemePreviewPage> {
                             borderRadius: AppTheme.smallRadius,
                           ),
                           padding: const EdgeInsets.all(10),
-                          child: Icon(Icons.auto_stories_rounded,
-                              color: cs.primary),
+                          child: Icon(
+                            Icons.auto_stories_rounded,
+                            color: cs.primary,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -214,10 +207,7 @@ class _ThemePreviewPageState extends State<ThemePreviewPage> {
                   spacing: 10,
                   runSpacing: 10,
                   children: [
-                    Chip(
-                      label: const Text('Lessons'),
-                      onDeleted: () {},
-                    ),
+                    Chip(label: const Text('Lessons'), onDeleted: () {}),
                     Chip(
                       label: const Text('Assignments'),
                       backgroundColor: cs.primaryContainer,
@@ -241,12 +231,17 @@ class _ThemePreviewPageState extends State<ThemePreviewPage> {
                     Chip(
                       label: const Text('Success'),
                       backgroundColor: AppTheme.successContainer,
-                      side: BorderSide(color: AppTheme.success.withOpacity(0.25)),
+                      side: BorderSide(
+                        color: AppTheme.success.withOpacity(0.25),
+                      ),
                       labelStyle: theme.textTheme.labelLarge?.copyWith(
                         color: AppTheme.success,
                       ),
-                      avatar: Icon(Icons.check_circle,
-                          color: AppTheme.success, size: 18),
+                      avatar: Icon(
+                        Icons.check_circle,
+                        color: AppTheme.success,
+                        size: 18,
+                      ),
                     ),
                   ],
                 ),

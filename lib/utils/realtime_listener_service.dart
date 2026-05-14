@@ -73,8 +73,9 @@ class RealtimeListenerService {
 
             final now = DateTime.now();
             if (_lastLessonTime != null &&
-                now.difference(_lastLessonTime!).inSeconds < 3)
+                now.difference(_lastLessonTime!).inSeconds < 3) {
               return;
+            }
             _lastLessonTime = now;
 
             final lessonTitle = newRecord['title'] ?? 'درس جديد';
@@ -113,8 +114,9 @@ class RealtimeListenerService {
 
             final now = DateTime.now();
             if (_lastAssignmentTime != null &&
-                now.difference(_lastAssignmentTime!).inSeconds < 3)
+                now.difference(_lastAssignmentTime!).inSeconds < 3) {
               return;
+            }
             _lastAssignmentTime = now;
 
             // Optional: fetch assignment name for better message
@@ -213,8 +215,9 @@ class RealtimeListenerService {
 
             final now = DateTime.now();
             if (_lastDeliveryTime != null &&
-                now.difference(_lastDeliveryTime!).inSeconds < 3)
+                now.difference(_lastDeliveryTime!).inSeconds < 3) {
               return;
+            }
             _lastDeliveryTime = now;
 
             final assignmentTitle = assignment['title'] ?? 'واجب';

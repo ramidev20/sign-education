@@ -9,17 +9,15 @@ class AboutUsPage extends StatelessWidget {
     final cs = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('من نحن - منصة الإشارة التعليمية'),
-      ),
+      appBar: AppBar(title: const Text('من نحن - منصة الإشارة التعليمية')),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
             colors: [
-              cs.primary.withOpacity(0.08),
-              cs.tertiary.withOpacity(0.05),
+              cs.primary.withValues(alpha: 0.08),
+              cs.tertiary.withValues(alpha: 0.05),
               cs.surface,
             ],
           ),
@@ -78,11 +76,11 @@ class _HeroCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
           colors: [
-            cs.primary.withOpacity(0.16),
-            cs.secondary.withOpacity(0.14),
+            cs.primary.withValues(alpha: 0.16),
+            cs.secondary.withValues(alpha: 0.14),
           ],
         ),
-        border: Border.all(color: cs.primary.withOpacity(0.3)),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,10 +90,10 @@ class _HeroCard extends StatelessWidget {
               Icon(Icons.sign_language_outlined, color: cs.primary),
               const SizedBox(width: 8),
               Text(
-                'Sign Education',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                'EduBridge',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
             ],
           ),
@@ -145,7 +143,7 @@ class _AboutBlock extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: cs.primary.withOpacity(0.12),
+                color: cs.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: cs.primary, size: 20),
@@ -158,8 +156,8 @@ class _AboutBlock extends StatelessWidget {
                   Text(
                     title,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(content),
@@ -172,4 +170,3 @@ class _AboutBlock extends StatelessWidget {
     );
   }
 }
-

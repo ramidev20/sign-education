@@ -6,7 +6,7 @@ import 'package:flutter_chat_core/flutter_chat_core.dart' as chat_core;
 import 'package:sign_education/data/db/db_helper_assigments.dart';
 import 'package:sign_education/data/db/db_helper_classes.dart';
 import 'package:sign_education/data/models/assignment_model.dart';
-import 'package:sign_education/pages/chatSettings_page.dart';
+import 'package:sign_education/pages/chat_settings_page.dart';
 import 'package:sign_education/utils/imageAvatar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -33,8 +33,10 @@ class _ChatPageState extends State<ChatPage> {
   final List<chat_core.TextMessage> _messages = [];
   final Set<String> _messageIds = <String>{};
   final Set<String> _animateMessageIds = <String>{};
-  final Map<String, _MessagePayload> _payloadByMessageId = <String, _MessagePayload>{};
-  final Map<String, List<String>> _reactionByMessageId = <String, List<String>>{};
+  final Map<String, _MessagePayload> _payloadByMessageId =
+      <String, _MessagePayload>{};
+  final Map<String, List<String>> _reactionByMessageId =
+      <String, List<String>>{};
 
   chat_core.TextMessage? _replyToMessage;
 
@@ -73,7 +75,9 @@ class _ChatPageState extends State<ChatPage> {
         );
 
         _payloadByMessageId[messageId] = parsedPayload;
-        _reactionByMessageId[messageId] = List<String>.from(parsedPayload.reactions);
+        _reactionByMessageId[messageId] = List<String>.from(
+          parsedPayload.reactions,
+        );
         _messageIds.add(messageId);
         _animateMessageIds.add(messageId);
         _messages.add(message);
@@ -97,20 +101,24 @@ class _ChatPageState extends State<ChatPage> {
         .order('created_at', ascending: false)
         .limit(_pageSize);
 
-    final messages = (response as List).map((m) {
-      final id = m['message_id']?.toString() ?? const Uuid().v4();
-      final parsedPayload = _decodePayload((m['text'] ?? '').toString());
-      _payloadByMessageId[id] = parsedPayload;
-      _reactionByMessageId[id] = List<String>.from(parsedPayload.reactions);
-      return chat_core.TextMessage(
-        id: id,
-        authorId: m['sender_id'].toString(),
-        createdAt:
-            DateTime.tryParse(m['created_at'] ?? '')?.toUtc() ??
-            DateTime.now().toUtc(),
-        text: parsedPayload.displayText,
-      );
-    }).toList().reversed.toList();
+    final messages = (response as List)
+        .map((m) {
+          final id = m['message_id']?.toString() ?? const Uuid().v4();
+          final parsedPayload = _decodePayload((m['text'] ?? '').toString());
+          _payloadByMessageId[id] = parsedPayload;
+          _reactionByMessageId[id] = List<String>.from(parsedPayload.reactions);
+          return chat_core.TextMessage(
+            id: id,
+            authorId: m['sender_id'].toString(),
+            createdAt:
+                DateTime.tryParse(m['created_at'] ?? '')?.toUtc() ??
+                DateTime.now().toUtc(),
+            text: parsedPayload.displayText,
+          );
+        })
+        .toList()
+        .reversed
+        .toList();
 
     _messages
       ..clear()
@@ -150,41 +158,49 @@ class _ChatPageState extends State<ChatPage> {
           .order('created_at', ascending: false)
           .limit(_pageSize);
 
-      final page = (response as List).map((m) {
-        final id = m['message_id']?.toString() ?? const Uuid().v4();
-        final parsedPayload = _decodePayload((m['text'] ?? '').toString());
-        _payloadByMessageId[id] = parsedPayload;
-        _reactionByMessageId[id] = List<String>.from(parsedPayload.reactions);
-        return chat_core.TextMessage(
-          id: id,
-          authorId: m['sender_id'].toString(),
-          createdAt:
-              DateTime.tryParse(m['created_at'] ?? '')?.toUtc() ??
-              DateTime.now().toUtc(),
-          text: parsedPayload.displayText,
-        );
-      }).toList().reversed.toList();
+      final page = (response as List)
+          .map((m) {
+            final id = m['message_id']?.toString() ?? const Uuid().v4();
+            final parsedPayload = _decodePayload((m['text'] ?? '').toString());
+            _payloadByMessageId[id] = parsedPayload;
+            _reactionByMessageId[id] = List<String>.from(
+              parsedPayload.reactions,
+            );
+            return chat_core.TextMessage(
+              id: id,
+              authorId: m['sender_id'].toString(),
+              createdAt:
+                  DateTime.tryParse(m['created_at'] ?? '')?.toUtc() ??
+                  DateTime.now().toUtc(),
+              text: parsedPayload.displayText,
+            );
+          })
+          .toList()
+          .reversed
+          .toList();
 
       if (!mounted) return;
       setState(() {
         _messages.insertAll(0, page);
         _messageIds.addAll(page.map((m) => m.id));
-        _oldestCreatedAt = _messages.isNotEmpty ? _messages.first.createdAt : null;
+        _oldestCreatedAt = _messages.isNotEmpty
+            ? _messages.first.createdAt
+            : null;
         _hasMore = page.length == _pageSize;
       });
 
       _chatController.setMessages(List<chat_core.TextMessage>.from(_messages));
 
       if (!_hasMore && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('لا توجد رسائل أقدم')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('لا توجد رسائل أقدم')));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر تحميل المزيد: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('تعذر تحميل المزيد: $e')));
     } finally {
       if (mounted) setState(() => _loadingMore = false);
     }
@@ -241,9 +257,7 @@ class _ChatPageState extends State<ChatPage> {
 
     try {
       final jsonPart = rawText.substring(_payloadPrefix.length);
-      final decoded = Map<String, dynamic>.from(
-        (jsonDecode(jsonPart) as Map),
-      );
+      final decoded = Map<String, dynamic>.from((jsonDecode(jsonPart) as Map));
       return _MessagePayload(
         rawText: rawText,
         displayText: (decoded['text'] ?? '').toString(),
@@ -332,7 +346,7 @@ class _ChatPageState extends State<ChatPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
-                  value: selected?.assignmentId,
+                  initialValue: selected?.assignmentId,
                   decoration: const InputDecoration(labelText: 'اختر الواجب'),
                   items: assignments
                       .map(
@@ -450,7 +464,9 @@ class _ChatPageState extends State<ChatPage> {
           if (widget.user.role == 'teacher')
             IconButton(
               tooltip: 'تذكير بواجب',
-              onPressed: _sendingReminder ? null : _openAssignmentReminderDialog,
+              onPressed: _sendingReminder
+                  ? null
+                  : _openAssignmentReminderDialog,
               icon: _sendingReminder
                   ? const SizedBox(
                       width: 20,
@@ -531,7 +547,7 @@ class _ChatPageState extends State<ChatPage> {
               onMessageSend: _handleSendMessage,
               resolveUser: _resolveUser,
               theme: chat_core.ChatTheme.fromThemeData(theme),
-              backgroundColor: theme.colorScheme.background,
+              backgroundColor: theme.colorScheme.surface,
 
               onMessageLongPress:
                   (
@@ -569,7 +585,8 @@ class _ChatPageState extends State<ChatPage> {
                       },
                     ).then((value) async {
                       if (value == null) return;
-                      if (value == '__reply__' && message is chat_core.TextMessage) {
+                      if (value == '__reply__' &&
+                          message is chat_core.TextMessage) {
                         setState(() => _replyToMessage = message);
                         return;
                       }
@@ -578,153 +595,195 @@ class _ChatPageState extends State<ChatPage> {
                   },
 
               builders: chat_core.Builders(
-          chatMessageBuilder:
-              (
-                BuildContext context,
-                chat_core.Message message,
-                int messageWidth,
-                Animation<double> animation,
-                Widget child, {
-                chat_core.MessageGroupStatus? groupStatus,
-                bool? isRemoved,
-                required bool isSentByMe,
-              }) {
-                final shouldAnimate = _animateMessageIds.remove(message.id);
-                final sizeFactor = shouldAnimate
-                    ? animation
-                    : const AlwaysStoppedAnimation<double>(1);
+                chatMessageBuilder:
+                    (
+                      BuildContext context,
+                      chat_core.Message message,
+                      int messageWidth,
+                      Animation<double> animation,
+                      Widget child, {
+                      chat_core.MessageGroupStatus? groupStatus,
+                      bool? isRemoved,
+                      required bool isSentByMe,
+                    }) {
+                      final shouldAnimate = _animateMessageIds.remove(
+                        message.id,
+                      );
+                      final sizeFactor = shouldAnimate
+                          ? animation
+                          : const AlwaysStoppedAnimation<double>(1);
 
-                return SizeTransition(
-                  sizeFactor: sizeFactor,
-                  child: FutureBuilder<chat_core.User>(
-                    future: _resolveUser(message.authorId), // fetch user info
-                    builder: (context, snapshot) {
-                      final displayName = snapshot.hasData
-                          ? snapshot.data!.name
-                          : message.authorId; // fallback until loaded
+                      return SizeTransition(
+                        sizeFactor: sizeFactor,
+                        child: FutureBuilder<chat_core.User>(
+                          future: _resolveUser(
+                            message.authorId,
+                          ), // fetch user info
+                          builder: (context, snapshot) {
+                            final displayName = snapshot.hasData
+                                ? snapshot.data!.name
+                                : message.authorId; // fallback until loaded
 
-                      return Container(
-                        margin: EdgeInsets.symmetric(
-                          vertical: 4.0,
-                        ), // Add spacing between messages
-                        child: Row(
-                          mainAxisAlignment: isSentByMe
-                              ? MainAxisAlignment.end
-                              : MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Flexible(
-                              child: Column(
-                                crossAxisAlignment: isSentByMe
-                                    ? CrossAxisAlignment.end
-                                    : CrossAxisAlignment.start,
+                            return Container(
+                              margin: EdgeInsets.symmetric(
+                                vertical: 4.0,
+                              ), // Add spacing between messages
+                              child: Row(
+                                mainAxisAlignment: isSentByMe
+                                    ? MainAxisAlignment.end
+                                    : MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  if (!isSentByMe) // 👈 show label only for others
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        left:
-                                            12.0, // Added left padding to align with bubble
-                                        bottom: 4.0, // Increased bottom padding
-                                      ),
-                                      child: Text(
-                                        displayName!,
-                                        style: TextStyle(
-                                          fontSize: 12, // Slightly larger font
-                                          fontWeight: FontWeight.bold,
-                                          color: cs.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ),
-                                  Container(
-                                    margin: EdgeInsets.symmetric(
-                                      horizontal:
-                                          8.0, // Add horizontal margin to bubbles
-                                    ),
+                                  Flexible(
                                     child: Column(
                                       crossAxisAlignment: isSentByMe
                                           ? CrossAxisAlignment.end
                                           : CrossAxisAlignment.start,
                                       children: [
-                                        if (_payloadByMessageId[message.id]?.replyPreview !=
-                                            null)
-                                          Container(
-                                            margin: const EdgeInsets.only(
-                                              bottom: 4,
-                                            ),
-                                            padding: const EdgeInsets.all(6),
-                                            decoration: BoxDecoration(
-                                              color: cs.surfaceContainerHighest,
-                                              borderRadius: BorderRadius.circular(8),
+                                        if (!isSentByMe) // 👈 show label only for others
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left:
+                                                  12.0, // Added left padding to align with bubble
+                                              bottom:
+                                                  4.0, // Increased bottom padding
                                             ),
                                             child: Text(
-                                              _payloadByMessageId[message.id]!
-                                                  .replyPreview!,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: theme.textTheme.bodySmall,
-                                            ),
-                                          ),
-                                        if (_payloadByMessageId[message.id]?.messageType ==
-                                            'assignment_reminder')
-                                          Container(
-                                            margin: const EdgeInsets.only(
-                                              bottom: 4,
-                                            ),
-                                            padding: const EdgeInsets.all(6),
-                                            decoration: BoxDecoration(
-                                              color: cs.tertiaryContainer,
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              'تذكير واجب: ${_payloadByMessageId[message.id]?.assignmentTitle ?? ""}',
-                                              style: theme.textTheme.bodySmall?.copyWith(
-                                                fontWeight: FontWeight.w600,
+                                              displayName!,
+                                              style: TextStyle(
+                                                fontSize:
+                                                    12, // Slightly larger font
+                                                fontWeight: FontWeight.bold,
+                                                color: cs.onSurfaceVariant,
                                               ),
                                             ),
                                           ),
-                                        child,
-                                        if ((_reactionByMessageId[message.id] ?? const [])
-                                            .isNotEmpty)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 4,
-                                            ),
-                                            child: Wrap(
-                                              spacing: 4,
-                                              children:
-                                                  (_reactionByMessageId[message.id] ??
-                                                          const [])
-                                                      .map(
-                                                        (emoji) => Container(
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                            horizontal: 8,
-                                                            vertical: 2,
-                                                          ),
-                                                          decoration: BoxDecoration(
-                                                            color: cs.surfaceContainerHighest,
-                                                            borderRadius:
-                                                                BorderRadius.circular(10),
-                                                          ),
-                                                          child: Text(emoji),
-                                                        ),
-                                                      )
-                                                      .toList(),
-                                            ),
+                                        Container(
+                                          margin: EdgeInsets.symmetric(
+                                            horizontal:
+                                                8.0, // Add horizontal margin to bubbles
                                           ),
+                                          child: Column(
+                                            crossAxisAlignment: isSentByMe
+                                                ? CrossAxisAlignment.end
+                                                : CrossAxisAlignment.start,
+                                            children: [
+                                              if (_payloadByMessageId[message
+                                                          .id]
+                                                      ?.replyPreview !=
+                                                  null)
+                                                Container(
+                                                  margin: const EdgeInsets.only(
+                                                    bottom: 4,
+                                                  ),
+                                                  padding: const EdgeInsets.all(
+                                                    6,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: cs
+                                                        .surfaceContainerHighest,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                  child: Text(
+                                                    _payloadByMessageId[message
+                                                            .id]!
+                                                        .replyPreview!,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: theme
+                                                        .textTheme
+                                                        .bodySmall,
+                                                  ),
+                                                ),
+                                              if (_payloadByMessageId[message
+                                                          .id]
+                                                      ?.messageType ==
+                                                  'assignment_reminder')
+                                                Container(
+                                                  margin: const EdgeInsets.only(
+                                                    bottom: 4,
+                                                  ),
+                                                  padding: const EdgeInsets.all(
+                                                    6,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: cs.tertiaryContainer,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                  child: Text(
+                                                    'تذكير واجب: ${_payloadByMessageId[message.id]?.assignmentTitle ?? ""}',
+                                                    style: theme
+                                                        .textTheme
+                                                        .bodySmall
+                                                        ?.copyWith(
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                  ),
+                                                ),
+                                              child,
+                                              if ((_reactionByMessageId[message
+                                                          .id] ??
+                                                      const [])
+                                                  .isNotEmpty)
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 4,
+                                                      ),
+                                                  child: Wrap(
+                                                    spacing: 4,
+                                                    children:
+                                                        (_reactionByMessageId[message
+                                                                    .id] ??
+                                                                const [])
+                                                            .map(
+                                                              (
+                                                                emoji,
+                                                              ) => Container(
+                                                                padding:
+                                                                    const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          8,
+                                                                      vertical:
+                                                                          2,
+                                                                    ),
+                                                                decoration: BoxDecoration(
+                                                                  color: cs
+                                                                      .surfaceContainerHighest,
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        10,
+                                                                      ),
+                                                                ),
+                                                                child: Text(
+                                                                  emoji,
+                                                                ),
+                                                              ),
+                                                            )
+                                                            .toList(),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
+                            );
+                          },
                         ),
                       );
                     },
-                  ),
-                );
-              },
               ),
             ),
           ),

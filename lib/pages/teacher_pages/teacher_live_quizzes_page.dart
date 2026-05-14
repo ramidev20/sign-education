@@ -33,7 +33,9 @@ class _TeacherLiveQuizzesPageState extends State<TeacherLiveQuizzesPage> {
 
   Future<void> _fetch() async {
     try {
-      final list = await DbHelperLiveQuizzes.getQuizzesByTeacher(widget.user.id);
+      final list = await DbHelperLiveQuizzes.getQuizzesByTeacher(
+        widget.user.id,
+      );
       if (!mounted) return;
       setState(() {
         _active = list.where((q) => q.status == 'active').toList();
@@ -100,7 +102,9 @@ class _TeacherLiveQuizzesPageState extends State<TeacherLiveQuizzesPage> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      Chip(label: Text(q.status == 'active' ? 'مباشر' : 'منتهي')),
+                      Chip(
+                        label: Text(q.status == 'active' ? 'مباشر' : 'منتهي'),
+                      ),
                       Chip(label: Text(_fmt(q.createdAt))),
                     ],
                   ),
@@ -137,7 +141,9 @@ class _TeacherLiveQuizzesPageState extends State<TeacherLiveQuizzesPage> {
             body: Column(
               children: [
                 Container(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withOpacity(0.05),
                   child: const TabBar(
                     dividerColor: Colors.transparent,
                     tabs: [
@@ -149,16 +155,13 @@ class _TeacherLiveQuizzesPageState extends State<TeacherLiveQuizzesPage> {
                 Expanded(
                   child: TabBarView(
                     physics: const NeverScrollableScrollPhysics(),
-                    children: [
-                      _buildList(_active),
-                      _buildList(_closed),
-                    ],
+                    children: [_buildList(_active), _buildList(_closed)],
                   ),
                 ),
               ],
             ),
             floatingActionButton: AnimatedBuilder(
-              animation: tabController!,
+              animation: tabController,
               builder: (_, __) {
                 if (tabController.index != 0) return const SizedBox.shrink();
                 return FloatingActionButton.extended(
@@ -174,4 +177,3 @@ class _TeacherLiveQuizzesPageState extends State<TeacherLiveQuizzesPage> {
     );
   }
 }
-

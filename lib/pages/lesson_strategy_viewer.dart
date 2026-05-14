@@ -28,10 +28,8 @@ void openLessonStrategy(
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => InteractiveMindMapView(
-            username: user.name,
-            mindMapJson: json,
-          ),
+          builder: (_) =>
+              InteractiveMindMapView(username: user.name, mindMapJson: json),
         ),
       );
       return;
@@ -47,10 +45,8 @@ void openLessonStrategy(
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => InteractiveHierarchyView(
-            user: user,
-            hierarchyJson: json,
-          ),
+          builder: (_) =>
+              InteractiveHierarchyView(user: user, hierarchyJson: json),
         ),
       );
       return;
@@ -95,10 +91,8 @@ void openLessonStrategy(
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => InteractiveJournalisticQuestionsView(
-            user: user,
-            json: json,
-          ),
+          builder: (_) =>
+              InteractiveJournalisticQuestionsView(user: user, json: json),
         ),
       );
       return;
@@ -106,14 +100,18 @@ void openLessonStrategy(
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => InteractiveEducationalStoryView(user: user, json: json),
+          builder: (_) =>
+              InteractiveEducationalStoryView(user: user, json: json),
         ),
       );
       return;
     default:
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('هذه الاستراتيجية غير مدعومة: ${strategy.strategyType}')),
+        SnackBar(
+          content: Text(
+            'هذه الاستراتيجية غير مدعومة: ${strategy.strategyType}',
+          ),
+        ),
       );
   }
 }
-

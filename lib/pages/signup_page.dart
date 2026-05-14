@@ -108,7 +108,7 @@ class _SignupPageState extends State<SignupPage>
       body: AnimatedContainer(
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOut,
-        color: theme.colorScheme.background,
+        color: theme.colorScheme.surface,
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
@@ -224,7 +224,7 @@ class _SignupPageState extends State<SignupPage>
                                 key: const ValueKey("student"),
                                 children: [
                                   DropdownButtonFormField<String>(
-                                    value: _level,
+                                    initialValue: _level,
                                     decoration: const InputDecoration(
                                       labelText: "المستوى",
                                     ),
@@ -243,7 +243,7 @@ class _SignupPageState extends State<SignupPage>
                                   ),
                                   const SizedBox(height: 15),
                                   DropdownButtonFormField<String>(
-                                    value: _branch,
+                                    initialValue: _branch,
                                     decoration: const InputDecoration(
                                       labelText: "الشعبة",
                                     ),

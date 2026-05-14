@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:sign_education/data/models/user_model.dart';
-import 'package:sign_education/strategy_pages/interactive_comparison_view.dart';
 import 'package:sign_education/strategy_pages/interactive_mindmap_view.dart'; // make sure path is correct
 
 void main() async {

@@ -27,9 +27,7 @@ class AppTheme {
     Radius.circular(16),
   );
 
-  static const BorderRadius smallRadius = BorderRadius.all(
-    Radius.circular(12),
-  );
+  static const BorderRadius smallRadius = BorderRadius.all(Radius.circular(12));
 
   /// ===== LIGHT THEME =====
   static final ThemeData light = ThemeData(
@@ -54,12 +52,9 @@ class AppTheme {
       error: error,
       onError: Colors.white,
 
-      background: background,
-      onBackground: textPrimary,
-
       surface: surface,
       onSurface: textPrimary,
-      surfaceVariant: Color(0xFFF2F4F7),
+      surfaceContainerHighest: Color(0xFFF2F4F7),
       onSurfaceVariant: textSecondary,
 
       outline: outline,
@@ -194,9 +189,8 @@ class AppTheme {
       shape: const RoundedRectangleBorder(borderRadius: smallRadius),
       side: const BorderSide(color: outline),
       fillColor: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.selected)
-            ? brand
-            : Colors.transparent,
+        (states) =>
+            states.contains(WidgetState.selected) ? brand : Colors.transparent,
       ),
       checkColor: WidgetStateProperty.all(Colors.white),
     ),
@@ -230,7 +224,10 @@ class AppTheme {
       type: BottomNavigationBarType.fixed,
       elevation: 0,
       selectedLabelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-      unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+      unselectedLabelStyle: TextStyle(
+        fontWeight: FontWeight.w600,
+        fontSize: 12,
+      ),
     ),
     tabBarTheme: const TabBarThemeData(
       labelColor: brand,
@@ -266,10 +263,7 @@ class AppTheme {
     ),
 
     // ===== Divider =====
-    dividerTheme: const DividerThemeData(
-      color: outline,
-      thickness: 1,
-    ),
+    dividerTheme: const DividerThemeData(color: outline, thickness: 1),
 
     // ===== Chip =====
     chipTheme: ChipThemeData(
@@ -343,12 +337,9 @@ class AppTheme {
       error: error,
       onError: Colors.white,
 
-      background: Color(0xFF0B1220),
-      onBackground: Color(0xFFF9FAFB),
-
       surface: Color(0xFF111827),
       onSurface: Color(0xFFF9FAFB),
-      surfaceVariant: Color(0xFF1F2937),
+      surfaceContainerHighest: Color(0xFF1F2937),
       onSurfaceVariant: Color(0xFFCBD5E1),
 
       outline: Color(0xFF475569),
@@ -468,7 +459,10 @@ class AppTheme {
       type: BottomNavigationBarType.fixed,
       elevation: 0,
       selectedLabelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-      unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+      unselectedLabelStyle: TextStyle(
+        fontWeight: FontWeight.w600,
+        fontSize: 12,
+      ),
     ),
     tabBarTheme: const TabBarThemeData(
       labelColor: brand,
@@ -513,9 +507,8 @@ class AppTheme {
       shape: const RoundedRectangleBorder(borderRadius: smallRadius),
       side: const BorderSide(color: Color(0xFF475569)),
       fillColor: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.selected)
-            ? brand
-            : Colors.transparent,
+        (states) =>
+            states.contains(WidgetState.selected) ? brand : Colors.transparent,
       ),
       checkColor: WidgetStateProperty.all(Colors.white),
     ),

@@ -36,27 +36,27 @@ class _LessonEditPageState extends State<LessonEditPage> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if (widget.lesson.lessonId == null || widget.lesson.lessonId!.isEmpty) return;
+    if (widget.lesson.lessonId == null || widget.lesson.lessonId!.isEmpty)
+      return;
 
     setState(() => _saving = true);
     try {
-      await DbHelperLessons.updateLesson(
-        widget.lesson.lessonId!,
-        {
-          'title': _title,
-          'subject': _subject,
-          'description': _contentController.text.trim(),
-        },
-      );
+      await DbHelperLessons.updateLesson(widget.lesson.lessonId!, {
+        'title': _title,
+        'subject': _subject,
+        'description': _contentController.text.trim(),
+      });
 
-      final updated = await DbHelperLessons.getLessonById(widget.lesson.lessonId!);
+      final updated = await DbHelperLessons.getLessonById(
+        widget.lesson.lessonId!,
+      );
       if (!mounted) return;
       Navigator.pop(context, updated ?? widget.lesson);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر حفظ التعديلات: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('تعذر حفظ التعديلات: $e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -70,10 +70,7 @@ class _LessonEditPageState extends State<LessonEditPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('تعديل الدرس'),
-          centerTitle: true,
-        ),
+        appBar: AppBar(title: const Text('تعديل الدرس'), centerTitle: true),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Form(
@@ -93,7 +90,7 @@ class _LessonEditPageState extends State<LessonEditPage> {
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
-                  value: _subject,
+                  initialValue: _subject,
                   decoration: const InputDecoration(
                     labelText: 'المادة',
                     border: OutlineInputBorder(),
@@ -107,11 +104,11 @@ class _LessonEditPageState extends State<LessonEditPage> {
                       child: Text("علوم طبيعية"),
                     ),
                     DropdownMenuItem(value: "history", child: Text("تاريخ")),
-                    DropdownMenuItem(value: "geography", child: Text("جغرافيا")),
                     DropdownMenuItem(
-                      value: "philosophy",
-                      child: Text("فلسفة"),
+                      value: "geography",
+                      child: Text("جغرافيا"),
                     ),
+                    DropdownMenuItem(value: "philosophy", child: Text("فلسفة")),
                     DropdownMenuItem(value: "arabic", child: Text("لغة عربية")),
                     DropdownMenuItem(value: "french", child: Text("فرنسية")),
                     DropdownMenuItem(value: "english", child: Text("إنجليزية")),
@@ -127,9 +124,8 @@ class _LessonEditPageState extends State<LessonEditPage> {
                     border: OutlineInputBorder(),
                   ),
                   maxLines: 10,
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'أدخل نص الدرس'
-                      : null,
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'أدخل نص الدرس' : null,
                 ),
                 const SizedBox(height: 16),
                 FilledButton.icon(

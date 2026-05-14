@@ -31,6 +31,10 @@ class _LessonViewPageState extends State<LessonViewPage> {
 
   bool get _isStudent => widget.user.role == 'student';
 
+  String _resultTypeLabel(String resultType) {
+    return resultType == 'video' ? 'Video' : 'Cardboard';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -334,7 +338,8 @@ class _LessonViewPageState extends State<LessonViewPage> {
                                   : strategyLabelForType(s.strategyType);
                               return _StrategyTile(
                                 title: title,
-                                subtitle: strategyLabelForType(s.strategyType),
+                                subtitle:
+                                    '${strategyLabelForType(s.strategyType)} • ${_resultTypeLabel(s.resultType)}',
                                 icon: strategyIconForType(s.strategyType),
                                 onTap: () =>
                                     openLessonStrategy(context, widget.user, s),
@@ -533,9 +538,8 @@ class _LessonViewPageState extends State<LessonViewPage> {
                                         : strategyLabelForType(s.strategyType);
                                     return _TeacherStrategyTile(
                                       title: title,
-                                      subtitle: strategyLabelForType(
-                                        s.strategyType,
-                                      ),
+                                      subtitle:
+                                          '${strategyLabelForType(s.strategyType)} • ${_resultTypeLabel(s.resultType)}',
                                       icon: strategyIconForType(s.strategyType),
                                       onTap: () => openLessonStrategy(
                                         context,

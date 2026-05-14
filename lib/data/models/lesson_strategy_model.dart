@@ -24,9 +24,11 @@ class LessonStrategyModel {
       strategyType: map['strategy_type']?.toString() ?? '',
       contentJson: Map<String, dynamic>.from(map['content_json'] ?? const {}),
       title: map['title']?.toString(),
-      createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ??
+      createdAt:
+          DateTime.tryParse(map['created_at']?.toString() ?? '') ??
           DateTime.now(),
-      updatedAt: DateTime.tryParse(map['updated_at']?.toString() ?? '') ??
+      updatedAt:
+          DateTime.tryParse(map['updated_at']?.toString() ?? '') ??
           DateTime.now(),
     );
   }
@@ -39,5 +41,8 @@ class LessonStrategyModel {
       'title': title,
     };
   }
-}
 
+  String get resultType {
+    return 'cardboard';
+  }
+}

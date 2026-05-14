@@ -4,7 +4,6 @@ import 'package:sign_education/auth.dart';
 import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/pages/login_page.dart';
 import 'package:sign_education/pages/profile_page.dart';
-import 'package:sign_education/pages/theme_preview_page.dart';
 import 'package:sign_education/utils/realtime_listener_service.dart';
 import 'package:sign_education/utils/theme_controller.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -37,19 +36,6 @@ class SettingsPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildCard(
-            icon: Icons.palette_outlined,
-            color: cs.primary,
-            title: "UI Kit Preview",
-            subtitle: "Preview cards, dialogs, fields, and controls",
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ThemePreviewPage()),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
           _buildCard(
             icon: Icons.person,
             color: cs.secondary,

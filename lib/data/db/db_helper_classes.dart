@@ -29,10 +29,10 @@ class DbHelperClasses {
     final embeds = nameOnly ? _usersNameEmbeds : _usersEmbeds;
 
     Future<List<dynamic>> run(String embed) async {
-      var q = supabase.from('class_group_members').select(embed).eq(
-            'class_group_id',
-            classGroupId,
-          );
+      var q = supabase
+          .from('class_group_members')
+          .select(embed)
+          .eq('class_group_id', classGroupId);
       if (role != null) q = q.eq('role', role);
       return await q;
     }
@@ -41,7 +41,9 @@ class DbHelperClasses {
       return await run(embeds[0]);
     } on PostgrestException catch (e) {
       // Ambiguous relationship or missing named relationship; try the alternative.
-      debugPrint('DbHelperClasses: embed failed (${embeds[0]}): ${e.code} ${e.message}');
+      debugPrint(
+        'DbHelperClasses: embed failed (${embeds[0]}): ${e.code} ${e.message}',
+      );
       return await run(embeds[1]);
     }
   }
@@ -55,7 +57,7 @@ class DbHelperClasses {
     required String avatarColor,
     required String name,
   }) async {
-    final classGroupId = "${level}_${branch}_${subject}";
+    final classGroupId = "${level}_${branch}_$subject";
 
     await supabase.from('class_groups').insert({
       'class_group_id': classGroupId,
@@ -184,7 +186,7 @@ class DbHelperClasses {
       nameOnly: false,
     );
 
-    return (res as List).map((r) => UserModel.fromJson(r['users'])).toList();
+    return (res).map((r) => UserModel.fromJson(r['users'])).toList();
   }
 
   /// Delete entire class (only teacher can do this)
@@ -260,7 +262,7 @@ class DbHelperClasses {
         },
       );
 
-      await channel.subscribe();
+      channel.subscribe();
       debugPrint('- Subscribed to chat: $classGroupId');
       return channel;
     } catch (e, st) {
