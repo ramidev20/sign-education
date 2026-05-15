@@ -90,8 +90,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 label: 'الواجبات',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.groups),
-                label: 'المجموعات',
+                icon: Icon(Icons.chat_bubble_rounded),
+                label: 'المحادثات',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.settings),

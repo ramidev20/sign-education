@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sign_education/data/models/assignment_delivery_model.dart';
 import 'package:sign_education/data/models/assignment_model.dart';
 import 'package:sign_education/data/models/user_model.dart';
+import 'package:sign_education/data/labels_data.dart';
 import 'package:sign_education/utils/app_theme.dart';
 import 'package:sign_education/widgets/app_state.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -45,6 +46,9 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
   bool _hasMore = true;
   int _offset = 0;
   static const int _pageSize = 30;
+
+  String _deliveredSubjectFilter = 'all';
+  String _deliveredSortKey = 'date_desc';
 
   @override
   void initState() {
@@ -134,7 +138,13 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
       if (!mounted) return;
       setState(() {
         currentAssignments = allAssignments
-            .where((a) => !deliveriesByAssignment.containsKey(a.assignmentId))
+            .where((a) {
+              final notDelivered = !deliveriesByAssignment.containsKey(
+                a.assignmentId,
+              );
+              final notArchived = a.status != 'archived' && a.status != 'completed';
+              return notDelivered && notArchived;
+            })
             .toList();
 
         deliveredAssignments = _deliveries
@@ -418,13 +428,80 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
       );
     }
 
+    final allSubjects = <String>{}
+      ..addAll(deliveredAssignments.map((d) => d.assignment.subject));
+    final subjects = allSubjects.toList()..sort();
+
+    List<DeliveredAssignment> filtered = deliveredAssignments;
+    if (_deliveredSubjectFilter != 'all') {
+      filtered = filtered
+          .where((d) => d.assignment.subject == _deliveredSubjectFilter)
+          .toList();
+    }
+
+    if (_deliveredSortKey == 'date_asc') {
+      filtered.sort((a, b) => a.delivery.deliveryDate.compareTo(b.delivery.deliveryDate));
+    } else {
+      filtered.sort((a, b) => b.delivery.deliveryDate.compareTo(a.delivery.deliveryDate));
+    }
+
     return RefreshIndicator(
       onRefresh: () => fetchAssignments(reset: true),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: deliveredAssignments.length,
+        itemCount: filtered.length + 1,
         itemBuilder: (context, index) {
-          final deliveredItem = deliveredAssignments[index];
+          if (index == 0) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _deliveredSubjectFilter,
+                      decoration: const InputDecoration(
+                        labelText: 'المادة',
+                        isDense: true,
+                      ),
+                      items: [
+                        const DropdownMenuItem(value: 'all', child: Text('الكل')),
+                        ...subjects.map(
+                          (s) => DropdownMenuItem(
+                            value: s,
+                            child: Text(subjectLabels[s] ?? s),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setState(() => _deliveredSubjectFilter = v);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _deliveredSortKey,
+                      decoration: const InputDecoration(
+                        labelText: 'الترتيب',
+                        isDense: true,
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'date_desc', child: Text('الأحدث')),
+                        DropdownMenuItem(value: 'date_asc', child: Text('الأقدم')),
+                      ],
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setState(() => _deliveredSortKey = v);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final deliveredItem = filtered[index - 1];
           final assignment = deliveredItem.assignment;
           final delivery = deliveredItem.delivery;
 
@@ -451,6 +528,7 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
 
           final title = assignment.title ?? 'واجب';
           final answered = ((delivery.answersJson?['answers'] as List?) ?? const []).length;
+          final subjectText = subjectLabels[assignment.subject] ?? assignment.subject;
 
           return Card(
             margin: const EdgeInsets.only(bottom: 16),
@@ -459,23 +537,48 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(statusIcon, color: statusColor, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        statusText,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.w600,
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: statusColor.withValues(alpha: 0.18),
+                          ),
                         ),
+                        child: Icon(statusIcon, color: statusColor, size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      Chip(label: Text('المادة: $subjectText')),
+                      Chip(
+                        avatar: Icon(statusIcon, size: 18, color: statusColor),
+                        label: Text(
+                          statusText,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        backgroundColor: statusColor.withValues(alpha: 0.10),
+                        side: BorderSide(color: statusColor.withValues(alpha: 0.22)),
                       ),
                     ],
                   ),

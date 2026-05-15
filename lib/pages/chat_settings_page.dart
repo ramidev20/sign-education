@@ -3,6 +3,7 @@ import 'package:sign_education/data/db/db_helper_classes.dart';
 import 'package:sign_education/data/db/db_helper_users.dart';
 import 'package:sign_education/data/models/class_group_model.dart';
 import 'package:sign_education/data/models/user_model.dart';
+import 'package:sign_education/pages/group_members_page.dart';
 import 'package:sign_education/utils/imageAvatar.dart';
 
 class ChatSettingsPage extends StatefulWidget {
@@ -22,15 +23,11 @@ class ChatSettingsPage extends StatefulWidget {
 }
 
 class _ChatSettingsPageState extends State<ChatSettingsPage> {
-  final TextEditingController _emailController = TextEditingController();
-
   List<UserModel> _members = [];
   UserModel? _teacher;
-  UserModel? _searchResult;
   bool _loading = true;
-  bool _searching = false;
 
-  bool get isTeacher => widget.currentUser.role == "teacher";
+  bool get isTeacher => widget.currentUser.role == 'teacher';
 
   @override
   void initState() {
@@ -38,16 +35,9 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
     _loadMembers();
   }
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    super.dispose();
-  }
-
   Future<void> _loadMembers() async {
     setState(() => _loading = true);
     final members = await DbHelperClasses.getMembers(widget.group.classGroupId);
-
     final teacher = members.firstWhere(
       (m) => m.id == widget.group.teacherId,
       orElse: () => widget.currentUser,
@@ -61,81 +51,24 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
     });
   }
 
-  Future<void> _searchUserByEmail(String email) async {
-    final query = email.trim();
-    if (query.isEmpty) return;
-
-    setState(() {
-      _searching = true;
-      _searchResult = null;
-    });
-
-    final data = await DbHelperClasses.findUserByEmail(query);
-    if (!mounted) return;
-
-    setState(() {
-      _searchResult = data;
-      _searching = false;
-    });
-
-    if (data == null) {
-      _showSnack('No user found for $query');
-    }
-  }
-
-  Future<void> _addMember(UserModel user) async {
-    final confirm = await _confirm(
-      title: 'Add member',
-      message: 'Add ${user.name} (${user.email}) to this group?',
-      confirmLabel: 'Add',
+  Future<void> _openMembersPage() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GroupMembersPage(
+          group: widget.group,
+          currentUser: widget.currentUser,
+        ),
+      ),
     );
-
-    if (confirm != true) return;
-
-    if (_members.any((m) => m.id == user.id)) {
-      _showSnack('${user.email} is already a member');
-      return;
-    }
-
-    await DbHelperClasses.addStudentToClass(
-      classGroupId: widget.group.classGroupId,
-      studentId: user.id,
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _members.add(user);
-      _searchResult = null;
-      _emailController.clear();
-    });
-
-    _showSnack('${user.name} was added');
-  }
-
-  Future<void> _removeMember(UserModel user) async {
-    final confirm = await _confirm(
-      title: 'Remove member',
-      message: 'Remove ${user.name} from this group?',
-      confirmLabel: 'Remove',
-      destructive: true,
-    );
-
-    if (confirm != true) return;
-
-    await DbHelperClasses.removeStudentFromClass(
-      widget.group.classGroupId,
-      user.id,
-    );
-
-    if (!mounted) return;
-    setState(() => _members.removeWhere((m) => m.id == user.id));
+    if (mounted) _loadMembers();
   }
 
   Future<void> _clearChat() async {
     final confirm = await _confirm(
-      title: 'Clear chat',
-      message: 'Delete all messages in this group chat?',
-      confirmLabel: 'Clear',
+      title: 'مسح الرسائل',
+      message: 'هل تريد حذف كل رسائل هذه المجموعة؟',
+      confirmLabel: 'مسح',
       destructive: true,
     );
 
@@ -147,14 +80,14 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
         .eq('class_group_id', widget.group.classGroupId);
 
     if (!mounted) return;
-    _showSnack('All chat messages were cleared');
+    _showSnack('تم مسح رسائل المجموعة');
   }
 
   Future<void> _deleteGroup() async {
     final confirm = await _confirm(
-      title: 'Delete group',
-      message: 'This cannot be undone.',
-      confirmLabel: 'Delete',
+      title: 'حذف المجموعة',
+      message: 'سيتم حذف المجموعة نهائيا. لا يمكن التراجع عن هذا الإجراء.',
+      confirmLabel: 'حذف',
       destructive: true,
     );
 
@@ -174,25 +107,28 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
 
     return showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: destructive
-                ? FilledButton.styleFrom(
-                    backgroundColor: cs.error,
-                    foregroundColor: cs.onError,
-                  )
-                : null,
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(confirmLabel),
-          ),
-        ],
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              style: destructive
+                  ? FilledButton.styleFrom(
+                      backgroundColor: cs.error,
+                      foregroundColor: cs.onError,
+                    )
+                  : null,
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(confirmLabel),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -208,161 +144,107 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final students = _members.where((m) => m.id != _teacher?.id).toList();
+    final studentsCount = _members
+        .where((m) => m.id != (_teacher?.id ?? widget.group.teacherId))
+        .length;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Group details')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadMembers,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                children: [
-                  _GroupHeader(
-                    group: widget.group,
-                    memberCount: _members.length,
-                    isTeacher: isTeacher,
-                  ),
-                  const SizedBox(height: 18),
-                  _SectionTitle(
-                    icon: Icons.admin_panel_settings_outlined,
-                    title: 'Teacher',
-                  ),
-                  if (_teacher != null)
-                    _MemberTile(
-                      user: _teacher!,
-                      roleLabel: 'Owner',
-                      avatarColor: widget.group.avatarColor,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('تفاصيل المجموعة')),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _loadMembers,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  children: [
+                    _GroupHeader(
+                      group: widget.group,
+                      memberCount: _members.length,
+                      isTeacher: isTeacher,
                     ),
-                  if (isTeacher) ...[
                     const SizedBox(height: 18),
-                    _SectionTitle(
-                      icon: Icons.person_add_alt_1_rounded,
-                      title: 'Add member',
+                    const _SectionTitle(
+                      icon: Icons.admin_panel_settings_outlined,
+                      title: 'المعلم',
                     ),
-                    TextField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.search,
-                      decoration: InputDecoration(
-                        labelText: 'Student email',
-                        hintText: 'student@email.com',
-                        prefixIcon: const Icon(Icons.mail_outline_rounded),
-                        suffixIcon: _searching
-                            ? const Padding(
-                                padding: EdgeInsets.all(14),
-                                child: SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              )
-                            : IconButton(
-                                tooltip: 'Search',
-                                icon: const Icon(Icons.search_rounded),
-                                onPressed: () =>
-                                    _searchUserByEmail(_emailController.text),
-                              ),
-                      ),
-                      onSubmitted: _searchUserByEmail,
-                    ),
-                    if (_searchResult != null) ...[
-                      const SizedBox(height: 10),
+                    if (_teacher != null)
                       _MemberTile(
-                        user: _searchResult!,
-                        roleLabel: 'Search result',
-                        avatarColor: widget.group.avatarColor,
-                        trailing: FilledButton.icon(
-                          onPressed: () => _addMember(_searchResult!),
-                          icon: const Icon(Icons.add_rounded, size: 18),
-                          label: const Text('Add'),
-                        ),
+                        user: _teacher!,
+                        roleLabel: 'مالك المجموعة',
+                        avatarColor: _teacher?.avatarColor ?? widget.group.avatarColor,
+                      ),
+                    const SizedBox(height: 18),
+                    const _SectionTitle(
+                      icon: Icons.groups_2_outlined,
+                      title: 'الأعضاء',
+                    ),
+                    _ActionTile(
+                      icon: Icons.manage_accounts_outlined,
+                      title: 'إدارة الأعضاء',
+                      subtitle:
+                          'عدد الطلاب: $studentsCount - عرض وإضافة أو إزالة الأعضاء',
+                      onTap: _openMembersPage,
+                    ),
+                    const SizedBox(height: 18),
+                    const _SectionTitle(
+                      icon: Icons.info_outline_rounded,
+                      title: 'معلومات المجموعة',
+                    ),
+                    _InfoTile(
+                      icon: Icons.school_outlined,
+                      title: 'المستوى',
+                      value: widget.group.level,
+                    ),
+                    _InfoTile(
+                      icon: Icons.account_tree_outlined,
+                      title: 'الشعبة',
+                      value: widget.group.branch,
+                    ),
+                    _InfoTile(
+                      icon: Icons.menu_book_outlined,
+                      title: 'المادة',
+                      value: widget.group.subject,
+                    ),
+                    const SizedBox(height: 18),
+                    const _SectionTitle(
+                      icon: Icons.tune_rounded,
+                      title: 'إجراءات المجموعة',
+                    ),
+                    _ActionTile(
+                      icon: Icons.photo_library_outlined,
+                      title: 'الوسائط المشتركة',
+                      subtitle: 'الصور والملفات المشتركة في المحادثة',
+                      onTap: () {},
+                    ),
+                    _ActionTile(
+                      icon: Icons.link_rounded,
+                      title: 'الروابط المشتركة',
+                      subtitle: 'الروابط التي أرسلها أعضاء المجموعة',
+                      onTap: () {},
+                    ),
+                    if (isTeacher) ...[
+                      const SizedBox(height: 8),
+                      _ActionTile(
+                        icon: Icons.cleaning_services_outlined,
+                        title: 'مسح الرسائل',
+                        subtitle: 'حذف سجل المحادثة لهذه المجموعة',
+                        iconColor: cs.error,
+                        onTap: _clearChat,
+                      ),
+                      _ActionTile(
+                        icon: Icons.delete_forever_outlined,
+                        title: 'حذف المجموعة',
+                        subtitle: 'إزالة هذه المجموعة نهائيا',
+                        iconColor: cs.error,
+                        onTap: _deleteGroup,
                       ),
                     ],
                   ],
-                  const SizedBox(height: 18),
-                  _SectionTitle(
-                    icon: Icons.groups_2_outlined,
-                    title: 'Members',
-                    trailing: Text(
-                      '${students.length}',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                  if (students.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: cs.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: cs.outlineVariant),
-                      ),
-                      child: Text(
-                        'No students have joined yet.',
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    )
-                  else
-                    ...students.map(
-                      (member) => _MemberTile(
-                        user: member,
-                        avatarColor: widget.group.avatarColor,
-                        roleLabel: 'Student',
-                        trailing:
-                            isTeacher && member.id != widget.currentUser.id
-                            ? IconButton(
-                                tooltip: 'Remove',
-                                onPressed: () => _removeMember(member),
-                                icon: Icon(
-                                  Icons.person_remove_alt_1_outlined,
-                                  color: cs.error,
-                                ),
-                              )
-                            : null,
-                      ),
-                    ),
-                  const SizedBox(height: 18),
-                  _SectionTitle(
-                    icon: Icons.tune_rounded,
-                    title: 'Group actions',
-                  ),
-                  _ActionTile(
-                    icon: Icons.photo_library_outlined,
-                    title: 'Shared media',
-                    subtitle: 'Photos and files shared in this chat',
-                    onTap: () {},
-                  ),
-                  _ActionTile(
-                    icon: Icons.link_rounded,
-                    title: 'Shared links',
-                    subtitle: 'Links posted by group members',
-                    onTap: () {},
-                  ),
-                  if (isTeacher) ...[
-                    const SizedBox(height: 8),
-                    _ActionTile(
-                      icon: Icons.cleaning_services_outlined,
-                      title: 'Clear messages',
-                      subtitle: 'Remove all chat history for this group',
-                      iconColor: cs.error,
-                      onTap: _clearChat,
-                    ),
-                    _ActionTile(
-                      icon: Icons.delete_forever_outlined,
-                      title: 'Delete group',
-                      subtitle: 'Remove this group permanently',
-                      iconColor: cs.error,
-                      onTap: _deleteGroup,
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
+      ),
     );
   }
 }
@@ -387,8 +269,8 @@ class _GroupHeader extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
           colors: [cs.primary, cs.secondary],
         ),
         borderRadius: BorderRadius.circular(24),
@@ -430,8 +312,8 @@ class _GroupHeader extends StatelessWidget {
             runSpacing: 8,
             alignment: WrapAlignment.center,
             children: [
-              _HeaderPill(label: '$memberCount members'),
-              if (isTeacher) const _HeaderPill(label: 'Teacher controls'),
+              _HeaderPill(label: '$memberCount عضو'),
+              if (isTeacher) const _HeaderPill(label: 'صلاحيات المعلم'),
             ],
           ),
         ],
@@ -468,11 +350,10 @@ class _HeaderPill extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.icon, required this.title, this.trailing});
+  const _SectionTitle({required this.icon, required this.title});
 
   final IconData icon;
   final String title;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -492,7 +373,6 @@ class _SectionTitle extends StatelessWidget {
               ),
             ),
           ),
-          if (trailing != null) trailing!,
         ],
       ),
     );
@@ -503,14 +383,12 @@ class _MemberTile extends StatelessWidget {
   const _MemberTile({
     required this.user,
     required this.avatarColor,
-    this.roleLabel,
-    this.trailing,
+    required this.roleLabel,
   });
 
   final UserModel user;
   final String avatarColor;
-  final String? roleLabel;
-  final Widget? trailing;
+  final String roleLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -537,11 +415,31 @@ class _MemberTile extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        subtitle: Text(
-          roleLabel == null ? user.email : '$roleLabel • ${user.email}',
-        ),
-        trailing: trailing,
+        subtitle: Text('$roleLabel • ${user.email}'),
       ),
+    );
+  }
+}
+
+class _InfoTile extends StatelessWidget {
+  const _InfoTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ActionTile(
+      icon: icon,
+      title: title,
+      subtitle: value.trim().isEmpty ? '-' : value,
+      onTap: () {},
+      showChevron: false,
     );
   }
 }
@@ -553,6 +451,7 @@ class _ActionTile extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.iconColor,
+    this.showChevron = true,
   });
 
   final IconData icon;
@@ -560,6 +459,7 @@ class _ActionTile extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
   final Color? iconColor;
+  final bool showChevron;
 
   @override
   Widget build(BuildContext context) {
@@ -592,7 +492,7 @@ class _ActionTile extends StatelessWidget {
           ),
         ),
         subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right_rounded),
+        trailing: showChevron ? const Icon(Icons.chevron_left_rounded) : null,
         onTap: onTap,
       ),
     );

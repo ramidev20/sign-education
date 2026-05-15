@@ -134,7 +134,6 @@ class _SplashScreenState extends State<SplashScreen>
   late final Animation<double> _logoLift;
   late final Animation<double> _brandReveal;
   late final Animation<double> _bridgeSweep;
-  late final Animation<double> _taglineOpacity;
 
   @override
   void initState() {
@@ -168,11 +167,6 @@ class _SplashScreenState extends State<SplashScreen>
       parent: _controller,
       curve: const Interval(0.48, 0.92, curve: Curves.easeInOutCubic),
     );
-    _taglineOpacity = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.68, 1.0, curve: Curves.easeOut),
-    );
-
     _checkUser();
   }
 
@@ -227,8 +221,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    const deepPurple = Color(0xFF2F0A84);
-    const violet = Color(0xFF7C3AED);
+    const purpleDark = Color(0xFF4E54C8);
+    const purpleMid = Color(0xFF6C7BFF);
 
     return Scaffold(
       body: Container(
@@ -236,7 +230,7 @@ class _SplashScreenState extends State<SplashScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFF8F5FF), Color(0xFFEDE7FF), Color(0xFFFFFFFF)],
+            colors: [Color(0xFFF6F8FF), Color(0xFFEAF0FF), Color(0xFFF6F8FF)],
           ),
         ),
         child: Center(
@@ -259,16 +253,21 @@ class _SplashScreenState extends State<SplashScreen>
                             borderRadius: BorderRadius.circular(32),
                             boxShadow: [
                               BoxShadow(
-                                color: deepPurple.withValues(alpha: 0.24),
+                                color: purpleDark.withValues(alpha: 0.22),
                                 blurRadius: 34,
                                 offset: const Offset(0, 18),
+                              ),
+                              BoxShadow(
+                                color: purpleMid.withValues(alpha: 0.18),
+                                blurRadius: 28,
+                                offset: const Offset(0, 10),
                               ),
                             ],
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(30),
                             child: Image.asset(
-                              'assets/images/app_icon.png',
+                              'assets/images/app_icon_master.png',
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -289,33 +288,13 @@ class _SplashScreenState extends State<SplashScreen>
                           child: CustomPaint(
                             painter: _BridgeSweepPainter(
                               progress: _bridgeSweep.value,
-                              color: violet.withValues(alpha: 0.28),
+                              color: purpleMid.withValues(alpha: 0.34),
                             ),
                           ),
                         ),
                       ),
                       _AnimatedBrandName(progress: _brandReveal.value),
                     ],
-                  ),
-                  const SizedBox(height: 18),
-                  Opacity(
-                    opacity: _taglineOpacity.value,
-                    child: Transform.translate(
-                      offset: Offset(0, 16 * (1 - _taglineOpacity.value)),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 36),
-                        child: Text(
-                          'Education with signs. Opportunities without limits.',
-                          style: TextStyle(
-                            color: Color(0xFF2D1B69),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            height: 1.35,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
                   ),
                 ],
               );
@@ -335,20 +314,11 @@ class _AnimatedBrandName extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const letters = 'EduBridge';
-    const colors = [
-      Color(0xFF25105F),
-      Color(0xFF2E136D),
-      Color(0xFF4B1D95),
-      Color(0xFF7C3AED),
-      Color(0xFF8B5CF6),
-      Color(0xFFA78BFA),
-      Color(0xFF7C3AED),
-      Color(0xFF5B21B6),
-      Color(0xFF35147A),
-    ];
+    const brandColor = Color(0xFF4E54C8);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
+      textDirection: TextDirection.ltr,
       children: List.generate(letters.length, (index) {
         final start = index / letters.length * 0.34;
         final localProgress = ((progress - start) / 0.66)
@@ -363,7 +333,7 @@ class _AnimatedBrandName extends StatelessWidget {
             child: Text(
               letters[index],
               style: TextStyle(
-                color: colors[index],
+                color: brandColor,
                 fontSize: 40,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 0,

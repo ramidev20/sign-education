@@ -9,6 +9,7 @@ import 'package:sign_education/pages/pricing_page.dart';
 import 'package:sign_education/pages/profile_page.dart';
 import 'package:sign_education/pages/quizzes_page.dart';
 import 'package:sign_education/pages/updates_page.dart';
+import 'package:sign_education/utils/imageAvatar.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 class HomePage extends StatefulWidget {
@@ -26,9 +27,7 @@ class _HomeSlide {
   const _HomeSlide({required this.image, required this.onTap});
 }
 
-class _HomePageState extends State<HomePage> {
-  final TextEditingController searchController = TextEditingController();
-  final PageController _controller = PageController(viewportFraction: 0.85);
+class _HomePageState extends State<HomePage> {  final PageController _controller = PageController(viewportFraction: 0.85);
 
   List<_HomeSlide> get slides => [
     _HomeSlide(
@@ -65,7 +64,7 @@ class _HomePageState extends State<HomePage> {
     },
     {
       'title': 'اختبار مباشر',
-      'image': "assets/images/assigments.jpeg",
+      'image': "assets/images/quiz.jpg",
       'action': () => Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => QuizzesPage(user: widget.user)),
@@ -131,9 +130,11 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Theme.of(context).colorScheme.surface,
         titleSpacing: 0,
         automaticallyImplyLeading: false,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
+        title: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
             // --- Role + Name (on the left of avatar in RTL) ---
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -178,50 +179,22 @@ class _HomePageState extends State<HomePage> {
                     ),
                   );
                 },
-                child: CircleAvatar(
+                child: DefaultAvatar(
                   radius: 22,
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer,
-                  child: Text(
-                    widget.user.name.isNotEmpty
-                        ? widget.user.name[0].toUpperCase()
-                        : '?',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  avatarColor: widget.user.avatarColor,
+                  name: widget.user.name,
                 ),
               ),
             ),
 
             const SizedBox(width: 16),
-          ],
+            ],
+          ),
         ),
       ),
 
       body: Column(
         children: [
-          // 🔍 Search bar
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: searchController,
-              decoration: InputDecoration(
-                hintText: 'بحث ..',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHighest,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              onChanged: (_) => setState(() {}),
-            ),
-          ),
-
           // Main content
           Expanded(
             child: SingleChildScrollView(
@@ -455,3 +428,5 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+
+

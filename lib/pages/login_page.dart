@@ -200,7 +200,26 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
-                      icon: const Icon(Icons.g_mobiledata, size: 28),
+                      icon: Container(
+                        width: 22,
+                        height: 22,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: colorScheme.outlineVariant,
+                          ),
+                          color: theme.colorScheme.surface,
+                        ),
+                        child: const Text(
+                          'G',
+                          style: TextStyle(
+                            color: Color(0xFF4285F4),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
                       onPressed: _isLoading ? null : _loginWithGoogle,
                       label: const Text("تسجيل الدخول باستخدام Google"),
                       style: OutlinedButton.styleFrom(
@@ -240,3 +259,4 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
+

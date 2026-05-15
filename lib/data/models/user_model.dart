@@ -39,7 +39,7 @@ class UserModel {
       subjects: map['subjects'] != null
           ? List<String>.from(map['subjects'] as List)
           : null,
-      avatarColor: map['image_url']?.toString(),
+      avatarColor: map['avatar_color']?.toString(),
       createdAt:
           DateTime.tryParse(map['created_at']?.toString() ?? '') ??
           DateTime.now(),

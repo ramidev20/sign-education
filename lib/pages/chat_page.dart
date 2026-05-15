@@ -37,14 +37,26 @@ class _ChatPageState extends State<ChatPage> {
       <String, _MessagePayload>{};
   final Map<String, List<String>> _reactionByMessageId =
       <String, List<String>>{};
+  final Map<String, String> _roleByUserId = <String, String>{};
 
   chat_core.TextMessage? _replyToMessage;
 
-  DateTime? _oldestCreatedAt;
-  bool _loadingMore = false;
-  bool _hasMore = true;
   bool _sendingReminder = false;
   static const int _pageSize = 50;
+
+  static bool _looksArabic(String text) {
+    // Basic Arabic blocks (covers common Arabic letters).
+    return RegExp(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]').hasMatch(text);
+  }
+
+  static String _formatHHmm(BuildContext context, DateTime dtUtc) {
+    final local = dtUtc.toLocal();
+    final tod = TimeOfDay(hour: local.hour, minute: local.minute);
+    return MaterialLocalizations.of(context).formatTimeOfDay(
+      tod,
+      alwaysUse24HourFormat: true,
+    );
+  }
 
   @override
   void initState() {
@@ -52,7 +64,7 @@ class _ChatPageState extends State<ChatPage> {
     _chatController = chat_core.InMemoryChatController();
 
     _loadMessages();
-    // ✅ Subscribe to real-time updates
+    // Subscribe to real-time updates.
     _initRealtime();
   }
 
@@ -126,84 +138,22 @@ class _ChatPageState extends State<ChatPage> {
     _messageIds
       ..clear()
       ..addAll(messages.map((m) => m.id));
-    _oldestCreatedAt = _messages.isNotEmpty ? _messages.first.createdAt : null;
-    _hasMore = (response as List).length == _pageSize;
-
     // preload all unique sender IDs in one query
     final userIds = messages.map((m) => m.authorId).toSet().toList();
     if (userIds.isNotEmpty) {
       final users = await _supabase
           .from('users')
-          .select('id, name')
+          .select('id, name, role')
           .inFilter('id', userIds);
 
       for (final u in users) {
         _userCache[u['id']] = chat_core.User(id: u['id'], name: u['name']);
+        final role = (u['role'] ?? '').toString();
+        if (role.isNotEmpty) _roleByUserId[u['id'].toString()] = role;
       }
     }
 
     _chatController.setMessages(messages);
-  }
-
-  Future<void> _loadMoreMessages() async {
-    if (_loadingMore || !_hasMore || _oldestCreatedAt == null) return;
-    setState(() => _loadingMore = true);
-
-    try {
-      final response = await _supabase
-          .from('messages')
-          .select('message_id, sender_id, created_at, text')
-          .eq('class_group_id', widget.group.classGroupId)
-          .lt('created_at', _oldestCreatedAt!.toIso8601String())
-          .order('created_at', ascending: false)
-          .limit(_pageSize);
-
-      final page = (response as List)
-          .map((m) {
-            final id = m['message_id']?.toString() ?? const Uuid().v4();
-            final parsedPayload = _decodePayload((m['text'] ?? '').toString());
-            _payloadByMessageId[id] = parsedPayload;
-            _reactionByMessageId[id] = List<String>.from(
-              parsedPayload.reactions,
-            );
-            return chat_core.TextMessage(
-              id: id,
-              authorId: m['sender_id'].toString(),
-              createdAt:
-                  DateTime.tryParse(m['created_at'] ?? '')?.toUtc() ??
-                  DateTime.now().toUtc(),
-              text: parsedPayload.displayText,
-            );
-          })
-          .toList()
-          .reversed
-          .toList();
-
-      if (!mounted) return;
-      setState(() {
-        _messages.insertAll(0, page);
-        _messageIds.addAll(page.map((m) => m.id));
-        _oldestCreatedAt = _messages.isNotEmpty
-            ? _messages.first.createdAt
-            : null;
-        _hasMore = page.length == _pageSize;
-      });
-
-      _chatController.setMessages(List<chat_core.TextMessage>.from(_messages));
-
-      if (!_hasMore && mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('لا توجد رسائل أقدم')));
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('تعذر تحميل المزيد: $e')));
-    } finally {
-      if (mounted) setState(() => _loadingMore = false);
-    }
   }
 
   Future<void> _handleSendMessage(String text) async {
@@ -442,12 +392,14 @@ class _ChatPageState extends State<ChatPage> {
     // Remove the "current user optimization"
     final response = await _supabase
         .from('users')
-        .select('id, name')
+        .select('id, name, role')
         .eq('id', id)
         .maybeSingle();
 
     final user = chat_core.User(id: id, name: response?['name'] ?? 'User $id');
     _userCache[id] = user;
+    final role = (response?['role'] ?? '').toString();
+    if (role.isNotEmpty) _roleByUserId[id] = role;
     debugPrint('[resolveUser] Fetched user: ${user.name}');
     return user;
   }
@@ -475,17 +427,6 @@ class _ChatPageState extends State<ChatPage> {
                     )
                   : const Icon(Icons.assignment_late_outlined),
             ),
-          IconButton(
-            tooltip: 'تحميل رسائل أقدم',
-            onPressed: _loadingMore ? null : _loadMoreMessages,
-            icon: _loadingMore
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.history),
-          ),
           GestureDetector(
             onTap: () {
               Navigator.push(
@@ -502,7 +443,7 @@ class _ChatPageState extends State<ChatPage> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: DefaultAvatar(
-                avatarColor: widget.group.avatarColor, // 🎨 use new field
+                avatarColor: widget.group.avatarColor,
                 name: widget.group.name,
                 radius: 20,
               ),
@@ -541,13 +482,17 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ),
           Expanded(
-            child: Chat(
-              chatController: _chatController,
-              currentUserId: widget.user.id,
-              onMessageSend: _handleSendMessage,
-              resolveUser: _resolveUser,
-              theme: chat_core.ChatTheme.fromThemeData(theme),
-              backgroundColor: theme.colorScheme.surface,
+            child: Directionality(
+              // Keep overall chat layout LTR (WhatsApp-style positioning),
+              // while we can still render Arabic text RTL per-message.
+              textDirection: TextDirection.ltr,
+              child: Chat(
+                chatController: _chatController,
+                currentUserId: widget.user.id,
+                onMessageSend: _handleSendMessage,
+                resolveUser: _resolveUser,
+                theme: chat_core.ChatTheme.fromThemeData(theme),
+                backgroundColor: theme.colorScheme.surface,
 
               onMessageLongPress:
                   (
@@ -594,18 +539,41 @@ class _ChatPageState extends State<ChatPage> {
                     });
                   },
 
-              builders: chat_core.Builders(
-                chatMessageBuilder:
-                    (
-                      BuildContext context,
-                      chat_core.Message message,
-                      int messageWidth,
-                      Animation<double> animation,
-                      Widget child, {
-                      chat_core.MessageGroupStatus? groupStatus,
-                      bool? isRemoved,
-                      required bool isSentByMe,
-                    }) {
+                builders: chat_core.Builders(
+                  // WhatsApp-like composer (send icon on the right, subtle input bg)
+                  composerBuilder: (context) {
+                    final t = Theme.of(context);
+                    final cs = t.colorScheme;
+                    return Composer(
+                      // WhatsApp-like icons/spacing/colors.
+                      attachmentIcon: Icon(Icons.add, color: cs.onSurface),
+                      sendIcon: const Icon(Icons.send_rounded),
+                      sendIconColor: cs.primary,
+                      emptyFieldSendIconColor:
+                          cs.onSurfaceVariant.withValues(alpha: 0.5),
+                      backgroundColor: cs.surface,
+                      inputFillColor: cs.surfaceContainerLow,
+                      hintColor: cs.onSurfaceVariant,
+                      textColor: cs.onSurface,
+                      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                      gap: 8,
+                      inputBorder: const OutlineInputBorder(
+                        borderSide: BorderSide.none,
+                        borderRadius: BorderRadius.all(Radius.circular(24)),
+                      ),
+                    );
+                  },
+                  chatMessageBuilder:
+                      (
+                        BuildContext context,
+                        chat_core.Message message,
+                        int messageWidth,
+                        Animation<double> animation,
+                        Widget child, {
+                        chat_core.MessageGroupStatus? groupStatus,
+                        bool? isRemoved,
+                        required bool isSentByMe,
+                      }) {
                       final shouldAnimate = _animateMessageIds.remove(
                         message.id,
                       );
@@ -623,6 +591,30 @@ class _ChatPageState extends State<ChatPage> {
                             final displayName = snapshot.hasData
                                 ? snapshot.data!.name
                                 : message.authorId; // fallback until loaded
+                            final authorRole =
+                                _roleByUserId[message.authorId] ?? '';
+                            final isTeacher = authorRole == 'teacher';
+                            final teacherTagBg = cs.tertiaryContainer;
+                            final teacherTagFg = cs.onTertiaryContainer;
+                            final receivedBubbleBg = cs.surface;
+                            final receivedBubbleBorder = cs.outlineVariant
+                                .withValues(alpha: 0.35);
+
+                            final createdAt = message.createdAt;
+                            final timeText = createdAt != null
+                                ? _formatHHmm(context, createdAt)
+                                : '';
+
+                            final msgText = (message is chat_core.TextMessage)
+                                ? message.text
+                                : '';
+                            final isArabic = _looksArabic(msgText);
+                            final bubbleMaxWidth =
+                                MediaQuery.of(context).size.width * 0.62;
+                            final bubbleRadius = BorderRadius.circular(14);
+                            final mineBubbleBg = cs.primaryContainer;
+                            final mineBubbleFg = cs.onPrimaryContainer;
+                            final otherBubbleFg = cs.onSurface;
 
                             return Container(
                               margin: EdgeInsets.symmetric(
@@ -640,24 +632,6 @@ class _ChatPageState extends State<ChatPage> {
                                           ? CrossAxisAlignment.end
                                           : CrossAxisAlignment.start,
                                       children: [
-                                        if (!isSentByMe) // 👈 show label only for others
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              left:
-                                                  12.0, // Added left padding to align with bubble
-                                              bottom:
-                                                  4.0, // Increased bottom padding
-                                            ),
-                                            child: Text(
-                                              displayName!,
-                                              style: TextStyle(
-                                                fontSize:
-                                                    12, // Slightly larger font
-                                                fontWeight: FontWeight.bold,
-                                                color: cs.onSurfaceVariant,
-                                              ),
-                                            ),
-                                          ),
                                         Container(
                                           margin: EdgeInsets.symmetric(
                                             horizontal:
@@ -728,7 +702,174 @@ class _ChatPageState extends State<ChatPage> {
                                                         ),
                                                   ),
                                                 ),
-                                              child,
+
+                                              ConstrainedBox(
+                                                constraints: BoxConstraints(
+                                                  maxWidth: bubbleMaxWidth,
+                                                ),
+                                                child: Container(
+                                                  decoration: BoxDecoration(
+                                                    color: isSentByMe
+                                                        ? mineBubbleBg
+                                                        : receivedBubbleBg,
+                                                    borderRadius: bubbleRadius,
+                                                    border: isSentByMe
+                                                        ? null
+                                                        : Border.all(
+                                                          color:
+                                                              receivedBubbleBorder,
+                                                        ),
+                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.fromLTRB(
+                                                        12,
+                                                        8,
+                                                        12,
+                                                        6,
+                                                      ),
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment.end,
+                                                    children: [
+                                                      // Sender name + teacher tag inside the bubble.
+                                                      // Always show "Teacher" when the author is a teacher.
+                                                      if (!isSentByMe || isTeacher)
+                                                        Row(
+                                                          mainAxisAlignment:
+                                                              (!isSentByMe)
+                                                                  ? MainAxisAlignment
+                                                                      .spaceBetween
+                                                                  : MainAxisAlignment
+                                                                      .end,
+                                                          children: [
+                                                            if (!isSentByMe)
+                                                              Expanded(
+                                                                child: Text(
+                                                                  displayName ??
+                                                                      '',
+                                                                  maxLines: 1,
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis,
+                                                                  style: theme
+                                                                      .textTheme
+                                                                      .labelMedium
+                                                                      ?.copyWith(
+                                                                        fontWeight:
+                                                                            FontWeight
+                                                                                .w700,
+                                                                        color: cs
+                                                                            .onSurfaceVariant,
+                                                                      ),
+                                                                ),
+                                                              ),
+                                                            if (isTeacher) ...[
+                                                              if (!isSentByMe)
+                                                                const SizedBox(
+                                                                  width: 8,
+                                                                ),
+                                                              Container(
+                                                                padding:
+                                                                    const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          8,
+                                                                      vertical:
+                                                                          2,
+                                                                    ),
+                                                                decoration: BoxDecoration(
+                                                                  color:
+                                                                      teacherTagBg,
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        999,
+                                                                      ),
+                                                                ),
+                                                                child: Text(
+                                                                  'Teacher',
+                                                                  style: TextStyle(
+                                                                    fontSize: 11,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w700,
+                                                                    color:
+                                                                        teacherTagFg,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ],
+                                                        ),
+                                                      if (!isSentByMe || isTeacher)
+                                                        const SizedBox(height: 6),
+                                                      if (msgText.isNotEmpty)
+                                                        Align(
+                                                          alignment: isArabic
+                                                              ? Alignment
+                                                                  .centerRight
+                                                              : Alignment
+                                                                  .centerLeft,
+                                                          child: Text(
+                                                            msgText,
+                                                            textDirection:
+                                                                isArabic
+                                                                    ? TextDirection
+                                                                        .rtl
+                                                                    : TextDirection
+                                                                        .ltr,
+                                                            textAlign: isArabic
+                                                                ? TextAlign
+                                                                    .right
+                                                                : TextAlign
+                                                                    .left,
+                                                            style: theme
+                                                                .textTheme
+                                                                .bodyMedium
+                                                                ?.copyWith(
+                                                                  fontSize:
+                                                                      14,
+                                                                  color:
+                                                                      isSentByMe
+                                                                          ? mineBubbleFg
+                                                                          : otherBubbleFg,
+                                                                ),
+                                                          ),
+                                                        )
+                                                      else
+                                                        child,
+                                                      const SizedBox(height: 4),
+                                                      Row(
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .end,
+                                                        mainAxisSize:
+                                                            MainAxisSize.max,
+                                                        children: [
+                                                          Text(
+                                                            timeText,
+                                                            style: theme
+                                                                .textTheme
+                                                                .labelSmall
+                                                                ?.copyWith(
+                                                                  color: (isSentByMe
+                                                                          ? mineBubbleFg
+                                                                          : cs
+                                                                              .onSurfaceVariant)
+                                                                      .withValues(
+                                                                        alpha:
+                                                                            0.75,
+                                                                      ),
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w500,
+                                                                ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+
                                               if ((_reactionByMessageId[message
                                                           .id] ??
                                                       const [])
@@ -784,6 +925,7 @@ class _ChatPageState extends State<ChatPage> {
                         ),
                       );
                     },
+                ),
               ),
             ),
           ),
