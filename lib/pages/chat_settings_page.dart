@@ -4,6 +4,7 @@ import 'package:sign_education/data/db/db_helper_users.dart';
 import 'package:sign_education/data/models/class_group_model.dart';
 import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/pages/group_members_page.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:sign_education/utils/imageAvatar.dart';
 
 class ChatSettingsPage extends StatefulWidget {
@@ -28,6 +29,9 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
   bool _loading = true;
 
   bool get isTeacher => widget.currentUser.role == 'teacher';
+
+  AppStrings get _strings =>
+      AppStrings(Localizations.localeOf(context).languageCode);
 
   @override
   void initState() {
@@ -65,10 +69,15 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
   }
 
   Future<void> _clearChat() async {
+    final strings = _strings;
     final confirm = await _confirm(
-      title: 'مسح الرسائل',
-      message: 'هل تريد حذف كل رسائل هذه المجموعة؟',
-      confirmLabel: 'مسح',
+      title: strings.text('مسح الرسائل', 'Clear messages', 'Effacer les messages'),
+      message: strings.text(
+        'هل تريد حذف كل رسائل هذه المجموعة؟',
+        'Delete all messages in this group?',
+        'Supprimer tous les messages de ce groupe ?',
+      ),
+      confirmLabel: strings.text('مسح', 'Clear', 'Effacer'),
       destructive: true,
     );
 
@@ -80,14 +89,25 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
         .eq('class_group_id', widget.group.classGroupId);
 
     if (!mounted) return;
-    _showSnack('تم مسح رسائل المجموعة');
+    _showSnack(
+      strings.text(
+        'تم مسح رسائل المجموعة',
+        'Group messages cleared',
+        'Messages du groupe effaces',
+      ),
+    );
   }
 
   Future<void> _deleteGroup() async {
+    final strings = _strings;
     final confirm = await _confirm(
-      title: 'حذف المجموعة',
-      message: 'سيتم حذف المجموعة نهائيا. لا يمكن التراجع عن هذا الإجراء.',
-      confirmLabel: 'حذف',
+      title: strings.text('حذف المجموعة', 'Delete group', 'Supprimer le groupe'),
+      message: strings.text(
+        'سيتم حذف المجموعة نهائيا. لا يمكن التراجع عن هذا الإجراء.',
+        'This group will be deleted permanently. This action cannot be undone.',
+        'Ce groupe sera supprime definitivement. Cette action est irreversible.',
+      ),
+      confirmLabel: strings.text('حذف', 'Delete', 'Supprimer'),
       destructive: true,
     );
 
@@ -103,221 +123,207 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
     required String confirmLabel,
     bool destructive = false,
   }) {
+    final strings = _strings;
     final cs = Theme.of(context).colorScheme;
 
     return showDialog<bool>(
       context: context,
-      builder: (context) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              style: destructive
-                  ? FilledButton.styleFrom(
-                      backgroundColor: cs.error,
-                      foregroundColor: cs.onError,
-                    )
-                  : null,
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(confirmLabel),
-            ),
-          ],
-        ),
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(strings.cancel),
+          ),
+          FilledButton(
+            style: destructive
+                ? FilledButton.styleFrom(
+                    backgroundColor: cs.error,
+                    foregroundColor: cs.onError,
+                  )
+                : null,
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(confirmLabel),
+          ),
+        ],
       ),
     );
   }
 
   void _showSnack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _roleLabel(AppStrings strings, UserModel user) {
+    if (user.id == widget.group.teacherId) {
+      return strings.text('معلم', 'Teacher', 'Enseignant');
+    }
+    return strings.text('طالب', 'Student', 'Eleve');
   }
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final studentsCount = _members
-        .where((m) => m.id != (_teacher?.id ?? widget.group.teacherId))
-        .length;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(title: const Text('تفاصيل المجموعة')),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _loadMembers,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                  children: [
-                    _GroupHeader(
-                      group: widget.group,
-                      memberCount: _members.length,
-                      isTeacher: isTeacher,
-                    ),
-                    const SizedBox(height: 18),
-                    const _SectionTitle(
-                      icon: Icons.admin_panel_settings_outlined,
-                      title: 'المعلم',
-                    ),
-                    if (_teacher != null)
-                      _MemberTile(
-                        user: _teacher!,
-                        roleLabel: 'مالك المجموعة',
-                        avatarColor: _teacher?.avatarColor ?? widget.group.avatarColor,
+    final teacherId = _teacher?.id ?? widget.group.teacherId;
+    final memberCount = _members.length;
+    final studentsCount = _members.where((m) => m.id != teacherId).length;
+
+    return Scaffold(
+      appBar: AppBar(title: Text(strings.text('تفاصيل المجموعة', 'Group details', 'Details du groupe'))),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadMembers,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                children: [
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          DefaultAvatar(
+                            avatarColor: widget.group.avatarColor,
+                            name: widget.group.name ?? widget.group.classGroupId,
+                            radius: 36,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            widget.group.name ?? widget.group.classGroupId,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${strings.text('المستوى', 'Level', 'Niveau')}: ${widget.group.level} • '
+                            '${strings.text('المادة', 'Subject', 'Matiere')}: ${widget.group.subject}',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.center,
+                            children: [
+                              _HeaderPill(
+                                label:
+                                    '$memberCount ${strings.text('عضو', 'member(s)', 'membre(s)')}',
+                              ),
+                              _HeaderPill(
+                                label:
+                                    '$studentsCount ${strings.text('طالب', 'student(s)', 'eleve(s)')}',
+                              ),
+                              if (isTeacher)
+                                _HeaderPill(
+                                  label: strings.text(
+                                    'صلاحيات المعلم',
+                                    'Teacher privileges',
+                                    'Privileges enseignant',
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
                       ),
-                    const SizedBox(height: 18),
-                    const _SectionTitle(
-                      icon: Icons.groups_2_outlined,
-                      title: 'الأعضاء',
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  _SectionTitle(
+                    icon: Icons.people_outline,
+                    title: strings.text('الأعضاء', 'Members', 'Membres'),
+                  ),
+                  _ActionTile(
+                    icon: Icons.group_outlined,
+                    title: strings.text('عرض الأعضاء', 'View members', 'Voir les membres'),
+                    subtitle: strings.text(
+                      'إضافة أو إزالة الطلاب',
+                      'Add or remove students',
+                      'Ajouter ou retirer des eleves',
+                    ),
+                    onTap: _openMembersPage,
+                  ),
+                  const SizedBox(height: 16),
+                  _SectionTitle(
+                    icon: Icons.info_outline,
+                    title: strings.text('معلومات', 'Info', 'Infos'),
+                  ),
+                  _InfoTile(
+                    icon: Icons.badge_outlined,
+                    title: strings.text('رمز المجموعة', 'Group code', 'Code du groupe'),
+                    value: widget.group.classGroupId,
+                  ),
+                  _InfoTile(
+                    icon: Icons.person_outline,
+                    title: strings.text('المعلم', 'Teacher', 'Enseignant'),
+                    value: _teacher?.name ?? '-',
+                  ),
+                  const SizedBox(height: 16),
+                  _SectionTitle(
+                    icon: Icons.security_outlined,
+                    title: strings.text('إدارة', 'Manage', 'Gerer'),
+                  ),
+                  _ActionTile(
+                    icon: Icons.delete_sweep_outlined,
+                    iconColor: cs.error,
+                    title: strings.text('مسح الرسائل', 'Clear messages', 'Effacer les messages'),
+                    subtitle: strings.text(
+                      'حذف جميع رسائل المجموعة',
+                      'Delete all group messages',
+                      'Supprimer tous les messages du groupe',
+                    ),
+                    onTap: _clearChat,
+                  ),
+                  if (isTeacher)
                     _ActionTile(
-                      icon: Icons.manage_accounts_outlined,
-                      title: 'إدارة الأعضاء',
-                      subtitle:
-                          'عدد الطلاب: $studentsCount - عرض وإضافة أو إزالة الأعضاء',
-                      onTap: _openMembersPage,
-                    ),
-                    const SizedBox(height: 18),
-                    const _SectionTitle(
-                      icon: Icons.info_outline_rounded,
-                      title: 'معلومات المجموعة',
-                    ),
-                    _InfoTile(
-                      icon: Icons.school_outlined,
-                      title: 'المستوى',
-                      value: widget.group.level,
-                    ),
-                    _InfoTile(
-                      icon: Icons.account_tree_outlined,
-                      title: 'الشعبة',
-                      value: widget.group.branch,
-                    ),
-                    _InfoTile(
-                      icon: Icons.menu_book_outlined,
-                      title: 'المادة',
-                      value: widget.group.subject,
-                    ),
-                    const SizedBox(height: 18),
-                    const _SectionTitle(
-                      icon: Icons.tune_rounded,
-                      title: 'إجراءات المجموعة',
-                    ),
-                    _ActionTile(
-                      icon: Icons.photo_library_outlined,
-                      title: 'الوسائط المشتركة',
-                      subtitle: 'الصور والملفات المشتركة في المحادثة',
-                      onTap: () {},
-                    ),
-                    _ActionTile(
-                      icon: Icons.link_rounded,
-                      title: 'الروابط المشتركة',
-                      subtitle: 'الروابط التي أرسلها أعضاء المجموعة',
-                      onTap: () {},
-                    ),
-                    if (isTeacher) ...[
-                      const SizedBox(height: 8),
-                      _ActionTile(
-                        icon: Icons.cleaning_services_outlined,
-                        title: 'مسح الرسائل',
-                        subtitle: 'حذف سجل المحادثة لهذه المجموعة',
-                        iconColor: cs.error,
-                        onTap: _clearChat,
+                      icon: Icons.delete_forever_outlined,
+                      iconColor: cs.error,
+                      title: strings.text('حذف المجموعة', 'Delete group', 'Supprimer le groupe'),
+                      subtitle: strings.text(
+                        'إزالة المجموعة نهائيا',
+                        'Permanently remove the group',
+                        'Supprimer le groupe definitivement',
                       ),
-                      _ActionTile(
-                        icon: Icons.delete_forever_outlined,
-                        title: 'حذف المجموعة',
-                        subtitle: 'إزالة هذه المجموعة نهائيا',
-                        iconColor: cs.error,
-                        onTap: _deleteGroup,
+                      onTap: _deleteGroup,
+                    ),
+                  const SizedBox(height: 12),
+                  if (_members.isNotEmpty)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              strings.text('لمحة سريعة', 'Quick look', 'Apercu'),
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ..._members.take(6).map((m) {
+                              return _MemberTile(
+                                user: m,
+                                avatarColor: m.avatarColor ?? widget.group.avatarColor,
+                                roleLabel: _roleLabel(strings, m),
+                              );
+                            }),
+                          ],
+                        ),
                       ),
-                    ],
-                  ],
-                ),
+                    ),
+                ],
               ),
-      ),
-    );
-  }
-}
-
-class _GroupHeader extends StatelessWidget {
-  const _GroupHeader({
-    required this.group,
-    required this.memberCount,
-    required this.isTeacher,
-  });
-
-  final ClassGroupModel group;
-  final int memberCount;
-  final bool isTeacher;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [cs.primary, cs.secondary],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: cs.primary.withValues(alpha: 0.18),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          DefaultAvatar(
-            avatarColor: group.avatarColor,
-            name: group.name,
-            radius: 42,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            group.name,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: cs.onPrimary,
-              fontWeight: FontWeight.w800,
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${group.level} • ${group.branch} • ${group.subject}',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: cs.onPrimary.withValues(alpha: 0.82),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
-            children: [
-              _HeaderPill(label: '$memberCount عضو'),
-              if (isTeacher) const _HeaderPill(label: 'صلاحيات المعلم'),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
@@ -333,14 +339,14 @@ class _HeaderPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: cs.onPrimary.withValues(alpha: 0.14),
+        color: cs.primary.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.onPrimary.withValues(alpha: 0.22)),
+        border: Border.all(color: cs.outlineVariant),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: cs.onPrimary,
+          color: cs.onSurface,
           fontWeight: FontWeight.w700,
           fontSize: 12,
         ),
@@ -411,11 +417,17 @@ class _MemberTile extends StatelessWidget {
         ),
         title: Text(
           user.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w700,
           ),
         ),
-        subtitle: Text('$roleLabel • ${user.email}'),
+        subtitle: Text(
+          '$roleLabel • ${user.email}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }
@@ -492,9 +504,10 @@ class _ActionTile extends StatelessWidget {
           ),
         ),
         subtitle: Text(subtitle),
-        trailing: showChevron ? const Icon(Icons.chevron_left_rounded) : null,
+        trailing: showChevron ? const Icon(Icons.chevron_right_rounded) : null,
         onTap: onTap,
       ),
     );
   }
 }
+

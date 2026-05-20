@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sign_education/data/dictionary_subjects.dart';
 import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/pages/dictionary_subject_words_page.dart';
+import 'package:sign_education/utils/app_strings.dart';
 
 class DictionaryPage extends StatelessWidget {
   final UserModel user;
@@ -9,45 +10,44 @@ class DictionaryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('قاموس لغة الإشارة'),
-          centerTitle: true,
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(12),
-          child: GridView.builder(
-            itemCount: dictionarySubjects.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.05,
-            ),
-            itemBuilder: (context, index) {
-              final subject = dictionarySubjects[index];
+    final strings = AppStrings.of(context);
 
-              return _SubjectTile(
-                title: subject.titleAr,
-                icon: subject.icon,
-                color: subject.color,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => DictionarySubjectWordsPage(
-                        subjectId: subject.id,
-                        subjectTitleAr: subject.titleAr,
-                        subjectColor: subject.color,
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(strings.signDictionary),
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(12),
+        child: GridView.builder(
+          itemCount: dictionarySubjects.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.05,
           ),
+          itemBuilder: (context, index) {
+            final subject = dictionarySubjects[index];
+
+            return _SubjectTile(
+              title: subject.titleAr,
+              icon: subject.icon,
+              color: subject.color,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DictionarySubjectWordsPage(
+                      subjectId: subject.id,
+                      subjectTitleAr: subject.titleAr,
+                      subjectColor: subject.color,
+                    ),
+                  ),
+                );
+              },
+            );
+          },
         ),
       ),
     );
@@ -69,10 +69,10 @@ class _SubjectTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onColor = ThemeData.estimateBrightnessForColor(color) ==
-            Brightness.dark
-        ? Colors.white
-        : Colors.black;
+    final onColor =
+        ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+            ? Colors.white
+            : Colors.black;
 
     return Material(
       color: color.withOpacity(0.12),
@@ -109,4 +109,3 @@ class _SubjectTile extends StatelessWidget {
     );
   }
 }
-

@@ -4,10 +4,12 @@ import 'package:sign_education/data/models/class_group_model.dart';
 import 'package:sign_education/data/models/lesson_model.dart';
 import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/pages/lesson_select_group_page.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:sign_education/utils/app_theme.dart';
 
 class LessonCreatePage extends StatefulWidget {
   final UserModel user;
+
   const LessonCreatePage({super.key, required this.user});
 
   @override
@@ -25,6 +27,8 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
   String? selectedGroupId;
   ClassGroupModel? _selectedGroup;
 
+  AppStrings get _strings =>
+      AppStrings(Localizations.localeOf(context).languageCode);
 
   Future<void> _selectGroup() async {
     final result = await Navigator.push<ClassGroupModel>(
@@ -45,19 +49,42 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
 
   Color _parseColor(String hex) {
     try {
-      var clean = hex.replaceAll("#", "");
-      if (clean.length == 6) clean = "FF$clean";
-      return Color(int.parse("0x$clean"));
+      var clean = hex.replaceAll('#', '');
+      if (clean.length == 6) clean = 'FF$clean';
+      return Color(int.parse('0x$clean'));
     } catch (_) {
       return AppTheme.brand;
     }
   }
 
+  String _subjectLabel(AppStrings strings, String subjectKey) {
+    switch (subjectKey) {
+      case 'math':
+        return strings.text('رياضيات', 'Mathematics', 'Mathematiques');
+      case 'physics':
+        return strings.text('فيزياء', 'Physics', 'Physique');
+      case 'chemistry':
+        return strings.text('كيمياء', 'Chemistry', 'Chimie');
+      default:
+        return subjectKey;
+    }
+  }
+
   Future<void> _saveLesson() async {
+    final strings = _strings;
     if (!_formKey.currentState!.validate()) return;
+
     if (selectedGroupId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("الرجاء اختيار المجموعة")),
+        SnackBar(
+          content: Text(
+            strings.text(
+              'الرجاء اختيار المجموعة',
+              'Please select a group',
+              'Veuillez selectionner un groupe',
+            ),
+          ),
+        ),
       );
       return;
     }
@@ -66,7 +93,7 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
 
     final lesson = LessonModel(
       subject: subject!,
-      strategyType: "Default",
+      strategyType: 'Default',
       teacherId: widget.user.id,
       classGroupId: selectedGroupId!,
       title: title!,
@@ -80,121 +107,153 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
     setState(() => isUploading = false);
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("✅ تم حفظ الدرس ومشاركته بنجاح")),
+      SnackBar(
+        content: Text(
+          strings.text(
+            'تم حفظ الدرس ومشاركته بنجاح',
+            'Lesson saved and shared',
+            'Lecon enregistree et partagee',
+          ),
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        appBar: AppBar(
-          title: const Text("إضافة درس جديد"),
-          centerTitle: true,
-          backgroundColor: colorScheme.surface,
-          elevation: 0.5,
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextFormField(
-                  decoration: _inputDecoration("عنوان الدرس", colorScheme),
-                  onChanged: (v) => title = v,
-                  validator: (v) =>
-                      (v == null || v.isEmpty) ? "أدخل العنوان" : null,
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: Text(strings.text('إضافة درس جديد', 'Add lesson', 'Ajouter une lecon')),
+        centerTitle: true,
+        backgroundColor: colorScheme.surface,
+        elevation: 0.5,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                decoration:
+                    _inputDecoration(strings.text('عنوان الدرس', 'Lesson title', 'Titre de la lecon'), colorScheme),
+                onChanged: (v) => title = v,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? strings.text('أدخل العنوان', 'Enter a title', 'Saisissez un titre')
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                decoration: _inputDecoration(
+                  strings.text('المادة', 'Subject', 'Matiere'),
+                  colorScheme,
                 ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  decoration: _inputDecoration("المادة", colorScheme),
-                  items: const [
-                    DropdownMenuItem(value: "math", child: Text("رياضيات")),
-                    DropdownMenuItem(value: "physics", child: Text("فيزياء")),
-                    DropdownMenuItem(value: "chemistry", child: Text("كيمياء")),
-                  ],
-                  onChanged: (v) => subject = v,
-                  validator: (v) => v == null ? "اختر مادة" : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  decoration: _inputDecoration("نص الدرس", colorScheme).copyWith(
-                    alignLabelWithHint: true,
-                  ),
-                  onChanged: (v) => description = v,
-                  maxLines: 10,
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? "أدخل نص الدرس"
-                      : null,
-                ),
-                const SizedBox(height: 30),
-                const Text(
-                  "اختر المجموعة:",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Card(
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: _selectedGroup == null
-                          ? colorScheme.primary.withOpacity(0.12)
-                          : _parseColor(_selectedGroup!.avatarColor),
-                      child: Icon(
-                        Icons.group,
-                        color: _selectedGroup == null
-                            ? colorScheme.primary
-                            : Colors.white,
+                items: const ['math', 'physics', 'chemistry']
+                    .map(
+                      (key) => DropdownMenuItem(
+                        value: key,
+                        child: Text(_subjectLabel(strings, key)),
                       ),
+                    )
+                    .toList(),
+                onChanged: (v) => subject = v,
+                validator: (v) => v == null
+                    ? strings.text('اختر مادة', 'Select a subject', 'Selectionnez une matiere')
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                decoration: _inputDecoration(
+                  strings.text('نص الدرس', 'Lesson text', 'Texte de la lecon'),
+                  colorScheme,
+                ).copyWith(alignLabelWithHint: true),
+                onChanged: (v) => description = v,
+                maxLines: 10,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? strings.text('أدخل نص الدرس', 'Enter lesson text', 'Saisissez le texte de la lecon')
+                    : null,
+              ),
+              const SizedBox(height: 30),
+              Text(
+                strings.text('اختر المجموعة:', 'Select group:', 'Selectionner le groupe :'),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: _selectedGroup == null
+                        ? colorScheme.primary.withValues(alpha: 0.12)
+                        : _parseColor(_selectedGroup!.avatarColor),
+                    child: Icon(
+                      Icons.group,
+                      color: _selectedGroup == null ? colorScheme.primary : Colors.white,
                     ),
-                    title: Text(
-                      _selectedGroup?.name ?? 'اضغط لاختيار المجموعة',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: _selectedGroup == null
-                        ? const Text('سيتم اختيار المجموعة في صفحة منفصلة.')
-                        : Text(
-                            '${_selectedGroup!.level} • ${_selectedGroup!.subject}',
-                          ),
-                    trailing: const Icon(Icons.chevron_left_rounded),
-                    onTap: _selectGroup,
                   ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: isUploading ? null : _saveLesson,
-                  icon: isUploading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
+                  title: Text(
+                    _selectedGroup?.name ??
+                        strings.text(
+                          'اضغط لاختيار المجموعة',
+                          'Tap to choose a group',
+                          'Touchez pour choisir un groupe',
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: _selectedGroup == null
+                      ? Text(
+                          strings.text(
+                            'سيتم اختيار المجموعة في صفحة منفصلة.',
+                            'The group will be selected on a separate page.',
+                            'Le groupe sera selectionne sur une page separee.',
                           ),
                         )
-                      : const Icon(Icons.save_alt),
-                  label: Text(
-                    isUploading ? "جاري الحفظ..." : "حفظ ومشاركة الدرس",
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 55),
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: colorScheme.onPrimary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                      : Text(
+                          '${_selectedGroup!.level} • ${_selectedGroup!.subject}',
+                        ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: _selectGroup,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: isUploading ? null : _saveLesson,
+                icon: isUploading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(Icons.save_alt),
+                label: Text(
+                  isUploading
+                      ? strings.text('جارٍ الحفظ...', 'Saving...', 'Enregistrement...')
+                      : strings.text(
+                          'حفظ ومشاركة الدرس',
+                          'Save and share lesson',
+                          'Enregistrer et partager la lecon',
+                        ),
+                  style: const TextStyle(fontSize: 16),
+                ),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 55),
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -218,3 +277,4 @@ class _LessonCreatePageState extends State<LessonCreatePage> {
     );
   }
 }
+

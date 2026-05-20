@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sign_education/utils/app_strings.dart';
 
 class AboutUsPage extends StatelessWidget {
   const AboutUsPage({super.key});
@@ -7,9 +8,10 @@ class AboutUsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final strings = AppStrings.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('من نحن - منصة الإشارة التعليمية')),
+      appBar: AppBar(title: Text(strings.aboutPageTitle)),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -24,38 +26,33 @@ class AboutUsPage extends StatelessWidget {
         ),
         child: ListView(
           padding: const EdgeInsets.all(16),
-          children: const [
-            _HeroCard(),
-            SizedBox(height: 14),
+          children: [
+            _HeroCard(strings: strings),
+            const SizedBox(height: 14),
             _AboutBlock(
-              title: 'الرؤية',
+              title: strings.aboutVision,
               icon: Icons.visibility_outlined,
-              content:
-                  'نحو تجربة تعليمية عربية شاملة تجعل لغة الإشارة جزءاً طبيعياً من الصف الدراسي.',
+              content: strings.aboutVisionText,
             ),
             _AboutBlock(
-              title: 'الرسالة',
+              title: strings.aboutMission,
               icon: Icons.flag_outlined,
-              content:
-                  'نساعد المعلم والطالب على التعلم بالممارسة عبر الدروس، الاستراتيجيات، الواجبات، والتفاعل المستمر.',
+              content: strings.aboutMissionText,
             ),
             _AboutBlock(
-              title: 'ما الذي يميزنا؟',
+              title: strings.aboutWhatMakesUsDifferent,
               icon: Icons.auto_awesome_outlined,
-              content:
-                  'استراتيجيات قابلة للتحرير، واجبات ديناميكية، ودعم للتعلم دون اتصال ضمن تطبيق واحد.',
+              content: strings.aboutDifferentiatorText,
             ),
             _AboutBlock(
-              title: 'لمن صُممت المنصة؟',
+              title: strings.aboutWhoIsItFor,
               icon: Icons.groups_outlined,
-              content:
-                  'للمعلمين، الطلاب، والمؤسسات التعليمية التي تحتاج أدوات عملية وحديثة لتعليم لغة الإشارة.',
+              content: strings.aboutAudienceText,
             ),
             _AboutBlock(
-              title: 'فريق العمل',
+              title: strings.aboutTeam,
               icon: Icons.handshake_outlined,
-              content:
-                  'فريق يجمع بين التربية والتقنية والتصميم، ويتعاون مع مختصين في التربية الخاصة ومجتمع الصم.',
+              content: strings.aboutTeamText,
             ),
           ],
         ),
@@ -65,7 +62,9 @@ class AboutUsPage extends StatelessWidget {
 }
 
 class _HeroCard extends StatelessWidget {
-  const _HeroCard();
+  final AppStrings strings;
+
+  const _HeroCard({required this.strings});
 
   @override
   Widget build(BuildContext context) {
@@ -98,18 +97,15 @@ class _HeroCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text(
-            'تعليم لغة الإشارة بأسلوب تفاعلي حديث، مع أدوات ذكية تساعد المعلم والطالب على التقدم بشكل واضح.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          Text(strings.aboutHeroText),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: const [
-              Chip(label: Text('دروس تفاعلية')),
-              Chip(label: Text('استراتيجيات ذكية')),
-              Chip(label: Text('واجبات ديناميكية')),
+            children: [
+              Chip(label: Text(strings.interactiveLessonsChip)),
+              Chip(label: Text(strings.smartStrategiesChip)),
+              Chip(label: Text(strings.dynamicAssignmentsChip)),
             ],
           ),
         ],

@@ -13,6 +13,8 @@ class DbHelperUsers {
     String? level,
     String? branch,
     List<String>? subjects,
+    String? phone,
+    String? schoolName,
   }) async {
     await supabase.from('users').insert({
       'id': supabaseUser.id,
@@ -21,9 +23,10 @@ class DbHelperUsers {
       'role': role,
       'level': role == 'student' ? level : null,
       'branch': role == 'student' ? branch : null,
-      'points': role == 'student' ? 0 : null,
       'class_group': role == 'student' ? null : null, // waiting room
       'subjects': role == 'teacher' ? (subjects ?? ['all']) : null,
+      'phone': phone,
+      'school_name': schoolName,
     });
   }
 
@@ -39,7 +42,6 @@ class DbHelperUsers {
         'email': email,
         'name': name.isEmpty ? fallbackName : name,
         'role': 'student',
-        'points': 0,
       },
       onConflict: 'id',
       ignoreDuplicates: true,

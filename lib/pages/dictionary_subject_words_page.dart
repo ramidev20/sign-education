@@ -6,6 +6,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 import 'package:sign_education/data/dictionary_data.dart';
 import 'package:sign_education/pages/dictionary_video_player_page.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
 class DictionarySubjectWordsPage extends StatefulWidget {
@@ -26,12 +27,12 @@ class DictionarySubjectWordsPage extends StatefulWidget {
 }
 
 class _DictionarySubjectWordsPageState extends State<DictionarySubjectWordsPage> {
-  String _searchQuery = "";
+  String _searchQuery = '';
   Map<String, Uint8List?> _thumbnails = {};
   bool _isLoading = true;
 
   List<Map<String, dynamic>> get _subjectWords =>
-      dictData.where((w) => w["subject"] == widget.subjectId).toList();
+      dictData.where((w) => w['subject'] == widget.subjectId).toList();
 
   @override
   void initState() {
@@ -40,11 +41,11 @@ class _DictionarySubjectWordsPageState extends State<DictionarySubjectWordsPage>
   }
 
   Future<void> _initThumbnails() async {
-    final Map<String, Uint8List?> thumbs = {};
+    final thumbs = <String, Uint8List?>{};
     final words = _subjectWords;
 
     for (final item in words) {
-      final clipPath = item["clip"] as String;
+      final clipPath = item['clip'] as String;
       try {
         final byteData = await rootBundle.load(clipPath);
         final tempDir = await getTemporaryDirectory();
@@ -79,103 +80,96 @@ class _DictionarySubjectWordsPageState extends State<DictionarySubjectWordsPage>
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final words = _subjectWords;
     final filtered = words.where((item) {
-      final en = item["en"].toString().toLowerCase();
-      final ar = item["ar"].toString().toLowerCase();
+      final en = item['en'].toString().toLowerCase();
+      final ar = item['ar'].toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
       return en.contains(query) || ar.contains(query);
     }).toList();
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.subjectTitleAr),
-          centerTitle: true,
-        ),
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    child: TextField(
-                      onChanged: (value) => setState(() => _searchQuery = value),
-                      decoration: InputDecoration(
-                        hintText: 'ابحث عن كلمة',
-                        prefixIcon: const Icon(Icons.search),
-                        filled: true,
-                        fillColor: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      textAlign: TextAlign.start,
-                      textDirection: TextDirection.rtl,
-                    ),
-                  ),
-                  Expanded(
-                    child: filtered.isEmpty
-                        ? const Center(
-                            child: Text(
-                              "لا توجد كلمات",
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.black54,
-                              ),
-                            ),
-                          )
-                        : GridView.builder(
-                            padding: const EdgeInsets.all(10),
-                            itemCount: filtered.length,
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 10,
-                              crossAxisSpacing: 10,
-                              childAspectRatio: 0.88,
-                            ),
-                            itemBuilder: (context, index) {
-                              final item = filtered[index];
-                              final clipPath = item["clip"] as String;
-                              final thumb = _thumbnails[clipPath];
-
-                              return _WordCard(
-                                english: item["en"].toString(),
-                                arabic: item["ar"].toString(),
-                                difficulty: item["difficulty"].toString(),
-                                color: widget.subjectColor,
-                                thumb: thumb,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => DictionaryVideoPlayerPage(
-                                        title:
-                                            "${item["en"]} - ${item["ar"]}",
-                                        videoPath: clipPath,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.subjectTitleAr),
+        centerTitle: true,
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: TextField(
+                    onChanged: (value) => setState(() => _searchQuery = value),
+                    decoration: InputDecoration(
+                      hintText: strings.searchForWord,
+                      prefixIcon: const Icon(Icons.search),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: filtered.isEmpty
+                      ? Center(
+                          child: Text(
+                            strings.noWordsFound,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        )
+                      : GridView.builder(
+                          padding: const EdgeInsets.all(10),
+                          itemCount: filtered.length,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 10,
+                                crossAxisSpacing: 10,
+                                childAspectRatio: 0.88,
+                              ),
+                          itemBuilder: (context, index) {
+                            final item = filtered[index];
+                            final clipPath = item['clip'] as String;
+                            final thumb = _thumbnails[clipPath];
+
+                            return _WordCard(
+                              english: item['en'].toString(),
+                              arabic: item['ar'].toString(),
+                              difficulty: item['difficulty'].toString(),
+                              color: widget.subjectColor,
+                              thumb: thumb,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => DictionaryVideoPlayerPage(
+                                      title: '${item["en"]} - ${item["ar"]}',
+                                      videoPath: clipPath,
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
     );
   }
 }
@@ -217,15 +211,11 @@ class _WordCard extends StatelessWidget {
                     child: thumb != null
                         ? Image.memory(thumb!, fit: BoxFit.cover)
                         : Container(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest,
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
                             child: Icon(
                               Icons.videocam_rounded,
                               size: 44,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                   ),
@@ -273,14 +263,15 @@ class _DifficultyChip extends StatelessWidget {
   final String difficulty;
   const _DifficultyChip({required this.difficulty});
 
-  String get _label {
+  String _label(BuildContext context) {
+    final strings = AppStrings.of(context);
     switch (difficulty) {
       case 'easy':
-        return 'سهل';
+        return strings.easy;
       case 'medium':
-        return 'متوسط';
+        return strings.medium;
       case 'hard':
-        return 'صعب';
+        return strings.hard;
       default:
         return difficulty;
     }
@@ -315,7 +306,7 @@ class _DifficultyChip extends StatelessWidget {
         ],
       ),
       child: Text(
-        _label,
+        _label(context),
         style: const TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.w700,

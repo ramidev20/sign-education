@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/pages/student_pages/student_assignments_page.dart';
 import 'package:sign_education/pages/teacher_pages/teacher_assignments_page.dart';
+import 'package:sign_education/utils/app_strings.dart';
 
 enum UserType { student, teacher }
 
@@ -17,6 +18,7 @@ class AssignmentsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final bool isStudent =
         user.role == "student" || user.role == UserType.student.name;
     final bool isTeacher =
@@ -24,7 +26,7 @@ class AssignmentsPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('الواجبات'),
+        title: Text(strings.assignments),
         centerTitle: true,
       ),
       body: isStudent

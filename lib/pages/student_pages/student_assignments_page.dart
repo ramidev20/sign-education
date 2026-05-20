@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sign_education/data/models/assignment_delivery_model.dart';
 import 'package:sign_education/data/models/assignment_model.dart';
 import 'package:sign_education/data/models/user_model.dart';
-import 'package:sign_education/data/labels_data.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:sign_education/utils/app_theme.dart';
 import 'package:sign_education/widgets/app_state.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -71,7 +71,56 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
     }
   }
 
+  String _subjectLabel(AppStrings strings, String subjectKey) {
+    switch (subjectKey) {
+      case 'math':
+        return strings.text('رياضيات', 'Mathematics', 'Mathematiques');
+      case 'physics':
+        return strings.text('فيزياء', 'Physics', 'Physique');
+      case 'chemistry':
+        return strings.text('كيمياء', 'Chemistry', 'Chimie');
+      case 'biology':
+      case 'natural_sciences':
+        return strings.text('علوم طبيعية', 'Natural sciences', 'Sciences naturelles');
+      case 'history':
+        return strings.text('تاريخ', 'History', 'Histoire');
+      case 'geography':
+        return strings.text('جغرافيا', 'Geography', 'Geographie');
+      case 'history_geography':
+        return strings.text('تاريخ وجغرافيا', 'History and geography', 'Histoire et geographie');
+      case 'philosophy':
+        return strings.text('فلسفة', 'Philosophy', 'Philosophie');
+      case 'languages':
+      case 'language':
+        return strings.text('لغات', 'Languages', 'Langues');
+      case 'arabic':
+        return strings.text('اللغة العربية', 'Arabic language', 'Langue arabe');
+      case 'english':
+        return strings.text('اللغة الإنجليزية', 'English language', 'Langue anglaise');
+      case 'french':
+        return strings.text('اللغة الفرنسية', 'French language', 'Langue francaise');
+      default:
+        return subjectKey;
+    }
+  }
+
+  String _statusText(AppStrings strings, String status) {
+    switch (status) {
+      case 'approved':
+        return strings.text('تمت الموافقة على التسليم', 'Approved', 'Approuve');
+      case 'rejected':
+        return strings.text('تم رفض التسليم', 'Rejected', 'Refuse');
+      default:
+        return strings.text(
+          'في انتظار المراجعة',
+          'Pending review',
+          'En attente de revision',
+        );
+    }
+  }
+
   Future<void> fetchAssignments({required bool reset}) async {
+    final strings = AppStrings.of(context);
     try {
       if (reset) {
         setState(() {
@@ -122,7 +171,7 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
             .limit(500);
 
         _deliveries = (deliveredResult as List)
-            .map((d) => DeliveryModel.fromMap(d))
+            .map((item) => DeliveryModel.fromMap(item))
             .toList();
       }
 
@@ -131,28 +180,28 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
           .toList();
 
       final deliveriesByAssignment = {
-        for (final d in _deliveries) d.assignmentId: d,
+        for (final delivery in _deliveries) delivery.assignmentId: delivery,
       };
-      final assignmentById = {for (final a in allAssignments) a.assignmentId: a};
+      final assignmentById = {
+        for (final assignment in allAssignments) assignment.assignmentId: assignment,
+      };
 
       if (!mounted) return;
       setState(() {
-        currentAssignments = allAssignments
-            .where((a) {
-              final notDelivered = !deliveriesByAssignment.containsKey(
-                a.assignmentId,
-              );
-              final notArchived = a.status != 'archived' && a.status != 'completed';
-              return notDelivered && notArchived;
-            })
-            .toList();
+        currentAssignments = allAssignments.where((assignment) {
+          final notDelivered =
+              !deliveriesByAssignment.containsKey(assignment.assignmentId);
+          final notArchived =
+              assignment.status != 'archived' && assignment.status != 'completed';
+          return notDelivered && notArchived;
+        }).toList();
 
         deliveredAssignments = _deliveries
-            .where((d) => assignmentById.containsKey(d.assignmentId))
+            .where((delivery) => assignmentById.containsKey(delivery.assignmentId))
             .map(
-              (d) => DeliveredAssignment(
-                assignment: assignmentById[d.assignmentId]!,
-                delivery: d,
+              (delivery) => DeliveredAssignment(
+                assignment: assignmentById[delivery.assignmentId]!,
+                delivery: delivery,
               ),
             )
             .toList();
@@ -169,14 +218,17 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
         _loadingMore = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ أثناء التحميل: $e')),
+        SnackBar(
+          content: Text(
+            '${strings.text('حدث خطأ أثناء التحميل', 'Loading failed', 'Le chargement a echoue')}: $e',
+          ),
+        ),
       );
     }
   }
 
   Future<void> _markAssignmentsSeenIfNeeded() async {
-    if (_markedSeenThisSession) return;
-    if (!hasNewAssignment) return;
+    if (_markedSeenThisSession || !hasNewAssignment) return;
 
     _markedSeenThisSession = true;
     await Future.delayed(const Duration(seconds: 2));
@@ -218,7 +270,9 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final initialIndex = widget.initialTabIndex.clamp(0, 1).toInt();
+
     return DefaultTabController(
       length: 2,
       initialIndex: initialIndex,
@@ -242,8 +296,8 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                         tween: Tween(begin: 0.9, end: hasNewAssignment ? 1.15 : 1.0),
                         duration: const Duration(milliseconds: 650),
                         curve: Curves.easeInOut,
-                        builder: (context, v, child) => Transform.scale(
-                          scale: v,
+                        builder: (context, value, child) => Transform.scale(
+                          scale: value,
                           child: child,
                         ),
                         child: const Text(
@@ -254,10 +308,22 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                           ),
                         ),
                       ),
-                      child: const Text('الواجبات الحالية'),
+                      child: Text(
+                        strings.text(
+                          'الواجبات الحالية',
+                          'Current assignments',
+                          'Devoirs en cours',
+                        ),
+                      ),
                     ),
                   ),
-                  const Tab(text: 'التسليمات'),
+                  Tab(
+                    text: strings.text(
+                      'التسليمات',
+                      'Deliveries',
+                      'Remises',
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -277,12 +343,18 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
   }
 
   Widget _buildCurrentAssignmentsTab() {
+    final strings = AppStrings.of(context);
     if (_loading) return const AppLoading();
+
     if (currentAssignments.isEmpty) {
       return AppEmptyState(
         icon: Icons.assignment_outlined,
-        title: 'لا توجد واجبات حالية',
-        actionLabel: 'تحديث',
+        title: strings.text(
+          'لا توجد واجبات حالية',
+          'No current assignments',
+          'Aucun devoir en cours',
+        ),
+        actionLabel: strings.refresh,
         onAction: () => fetchAssignments(reset: true),
       );
     }
@@ -304,9 +376,12 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
           }
 
           final assignment = currentAssignments[index];
-          final title = assignment.title ?? 'واجب';
+          final title =
+              assignment.title ?? strings.text('واجب', 'Assignment', 'Devoir');
           final description = assignment.description ?? '';
-          final qCount = ((assignment.assignmentContentJson?['questions'] as List?) ?? const []).length;
+          final questionCount =
+              ((assignment.assignmentContentJson?['questions'] as List?) ?? const [])
+                  .length;
           final due = _fmtDateTime(assignment.completeAt);
 
           return Card(
@@ -328,7 +403,7 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                           color: Theme.of(context)
                               .colorScheme
                               .primary
-                              .withOpacity(0.10),
+                              .withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Row(
@@ -338,10 +413,14 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                               color: Theme.of(context).colorScheme.primary,
                             ),
                             const SizedBox(width: 8),
-                            const Expanded(
+                            Expanded(
                               child: Text(
-                                'لديك واجبات جديدة!',
-                                style: TextStyle(fontWeight: FontWeight.w800),
+                                strings.text(
+                                  'لديك واجبات جديدة!',
+                                  'You have new assignments!',
+                                  'Vous avez de nouveaux devoirs !',
+                                ),
+                                style: const TextStyle(fontWeight: FontWeight.w800),
                               ),
                             ),
                           ],
@@ -357,7 +436,7 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                             color: Theme.of(context)
                                 .colorScheme
                                 .primary
-                                .withOpacity(0.10),
+                                .withValues(alpha: 0.10),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
@@ -384,8 +463,7 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -394,8 +472,16 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        Chip(label: Text('عدد الأسئلة: $qCount')),
-                        Chip(label: Text('التسليم: $due')),
+                        Chip(
+                          label: Text(
+                            '${strings.text('عدد الأسئلة', 'Questions', 'Questions')}: $questionCount',
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            '${strings.text('التسليم', 'Due', 'Echeance')}: $due',
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -403,7 +489,13 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                       width: double.infinity,
                       child: FilledButton.icon(
                         icon: const Icon(Icons.edit_note_outlined, size: 18),
-                        label: const Text('حل الواجب'),
+                        label: Text(
+                          strings.text(
+                            'حل الواجب',
+                            'Solve assignment',
+                            'Repondre au devoir',
+                          ),
+                        ),
                         onPressed: () => _openSolveAssignment(assignment),
                       ),
                     ),
@@ -418,24 +510,30 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
   }
 
   Widget _buildDeliveredAssignmentsTab() {
+    final strings = AppStrings.of(context);
     if (_loading) return const AppLoading();
+
     if (deliveredAssignments.isEmpty) {
       return AppEmptyState(
         icon: Icons.cloud_done_outlined,
-        title: 'لا توجد تسليمات بعد',
-        actionLabel: 'تحديث',
+        title: strings.text(
+          'لا توجد تسليمات بعد',
+          'No deliveries yet',
+          'Aucune remise pour le moment',
+        ),
+        actionLabel: strings.refresh,
         onAction: () => fetchAssignments(reset: true),
       );
     }
 
     final allSubjects = <String>{}
-      ..addAll(deliveredAssignments.map((d) => d.assignment.subject));
+      ..addAll(deliveredAssignments.map((item) => item.assignment.subject));
     final subjects = allSubjects.toList()..sort();
 
     List<DeliveredAssignment> filtered = deliveredAssignments;
     if (_deliveredSubjectFilter != 'all') {
       filtered = filtered
-          .where((d) => d.assignment.subject == _deliveredSubjectFilter)
+          .where((item) => item.assignment.subject == _deliveredSubjectFilter)
           .toList();
     }
 
@@ -459,22 +557,25 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       value: _deliveredSubjectFilter,
-                      decoration: const InputDecoration(
-                        labelText: 'المادة',
+                      decoration: InputDecoration(
+                        labelText: strings.text('المادة', 'Subject', 'Matiere'),
                         isDense: true,
                       ),
                       items: [
-                        const DropdownMenuItem(value: 'all', child: Text('الكل')),
+                        DropdownMenuItem(
+                          value: 'all',
+                          child: Text(strings.text('الكل', 'All', 'Tous')),
+                        ),
                         ...subjects.map(
-                          (s) => DropdownMenuItem(
-                            value: s,
-                            child: Text(subjectLabels[s] ?? s),
+                          (subject) => DropdownMenuItem(
+                            value: subject,
+                            child: Text(_subjectLabel(strings, subject)),
                           ),
                         ),
                       ],
-                      onChanged: (v) {
-                        if (v == null) return;
-                        setState(() => _deliveredSubjectFilter = v);
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _deliveredSubjectFilter = value);
                       },
                     ),
                   ),
@@ -482,17 +583,23 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       value: _deliveredSortKey,
-                      decoration: const InputDecoration(
-                        labelText: 'الترتيب',
+                      decoration: InputDecoration(
+                        labelText: strings.text('الترتيب', 'Sort', 'Tri'),
                         isDense: true,
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 'date_desc', child: Text('الأحدث')),
-                        DropdownMenuItem(value: 'date_asc', child: Text('الأقدم')),
+                      items: [
+                        DropdownMenuItem(
+                          value: 'date_desc',
+                          child: Text(strings.text('الأحدث', 'Newest', 'Plus recent')),
+                        ),
+                        DropdownMenuItem(
+                          value: 'date_asc',
+                          child: Text(strings.text('الأقدم', 'Oldest', 'Plus ancien')),
+                        ),
                       ],
-                      onChanged: (v) {
-                        if (v == null) return;
-                        setState(() => _deliveredSortKey = v);
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _deliveredSortKey = value);
                       },
                     ),
                   ),
@@ -506,29 +613,26 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
           final delivery = deliveredItem.delivery;
 
           Color statusColor;
-          String statusText;
           IconData statusIcon;
-
           switch (delivery.status) {
             case 'approved':
               statusColor = AppTheme.success;
-              statusText = 'تمت الموافقة على التسليم';
               statusIcon = Icons.check_circle;
               break;
             case 'rejected':
               statusColor = Theme.of(context).colorScheme.error;
-              statusText = 'تم رفض التسليم';
               statusIcon = Icons.cancel;
               break;
             default:
               statusColor = AppTheme.warning;
-              statusText = 'في انتظار المراجعة';
               statusIcon = Icons.hourglass_empty;
           }
 
-          final title = assignment.title ?? 'واجب';
-          final answered = ((delivery.answersJson?['answers'] as List?) ?? const []).length;
-          final subjectText = subjectLabels[assignment.subject] ?? assignment.subject;
+          final title =
+              assignment.title ?? strings.text('واجب', 'Assignment', 'Devoir');
+          final answered =
+              ((delivery.answersJson?['answers'] as List?) ?? const []).length;
+          final subjectText = _subjectLabel(strings, assignment.subject);
 
           return Card(
             margin: const EdgeInsets.only(bottom: 16),
@@ -567,11 +671,15 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      Chip(label: Text('المادة: $subjectText')),
+                      Chip(
+                        label: Text(
+                          '${strings.text('المادة', 'Subject', 'Matiere')}: $subjectText',
+                        ),
+                      ),
                       Chip(
                         avatar: Icon(statusIcon, size: 18, color: statusColor),
                         label: Text(
-                          statusText,
+                          _statusText(strings, delivery.status),
                           style: TextStyle(
                             color: statusColor,
                             fontWeight: FontWeight.w700,
@@ -583,10 +691,12 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text('إجابات مسلّمة: $answered'),
+                  Text(
+                    '${strings.text('إجابات مسلمة', 'Submitted answers', 'Reponses remises')}: $answered',
+                  ),
                   const SizedBox(height: 4),
                   Text(
-                    "تم التسليم في: ${delivery.deliveryDate.toString().substring(0, 16)}",
+                    '${strings.text('تم التسليم في', 'Submitted at', 'Remis le')}: ${delivery.deliveryDate.toString().substring(0, 16)}',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 13,
@@ -595,7 +705,9 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                   if (delivery.status == 'rejected' &&
                       delivery.statusComment.isNotEmpty) ...[
                     const Divider(height: 18),
-                    Text("ملاحظة المعلم: ${delivery.statusComment}"),
+                    Text(
+                      '${strings.text('ملاحظة المعلم', 'Teacher note', 'Note de l enseignant')}: ${delivery.statusComment}',
+                    ),
                   ],
                 ],
               ),
@@ -632,7 +744,7 @@ class _AssignmentSolvePageState extends State<AssignmentSolvePage> {
   List<Map<String, dynamic>> get _questions {
     final raw = widget.assignment.assignmentContentJson?['questions'];
     if (raw is! List) return const [];
-    return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    return raw.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
   }
 
   @override
@@ -656,14 +768,16 @@ class _AssignmentSolvePageState extends State<AssignmentSolvePage> {
 
   @override
   void dispose() {
-    for (final c in _textControllers.values) {
-      c.dispose();
+    for (final controller in _textControllers.values) {
+      controller.dispose();
     }
     super.dispose();
   }
 
   Future<void> _submit() async {
+    final strings = AppStrings.of(context);
     final answers = <Map<String, dynamic>>[];
+
     for (var i = 0; i < _questions.length; i++) {
       final question = _questions[i];
       final id = question['id']?.toString() ?? '';
@@ -690,19 +804,31 @@ class _AssignmentSolvePageState extends State<AssignmentSolvePage> {
           final parsed = allowDecimal ? double.tryParse(raw) : int.tryParse(raw);
           if (parsed == null) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('تحقق من إجابة السؤال رقم ${i + 1}')),
+              SnackBar(
+                content: Text(
+                  '${strings.text('تحقق من إجابة السؤال رقم', 'Check answer for question', 'Verifiez la reponse de la question')} ${i + 1}',
+                ),
+              ),
             );
             return;
           }
           if (min != null && parsed < min) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('إجابة السؤال رقم ${i + 1} أقل من الحد الأدنى')),
+              SnackBar(
+                content: Text(
+                  '${strings.text('إجابة السؤال رقم', 'Answer for question', 'La reponse a la question')} ${i + 1} ${strings.text('أقل من الحد الأدنى', 'is below the minimum', 'est inferieure au minimum')}',
+                ),
+              ),
             );
             return;
           }
           if (max != null && parsed > max) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('إجابة السؤال رقم ${i + 1} أكبر من الحد الأقصى')),
+              SnackBar(
+                content: Text(
+                  '${strings.text('إجابة السؤال رقم', 'Answer for question', 'La reponse a la question')} ${i + 1} ${strings.text('أكبر من الحد الأقصى', 'is above the maximum', 'depasse le maximum')}',
+                ),
+              ),
             );
             return;
           }
@@ -717,10 +843,15 @@ class _AssignmentSolvePageState extends State<AssignmentSolvePage> {
           (value is List && value.isEmpty);
       if (isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('أكمل إجابة السؤال رقم ${i + 1} قبل التسليم')),
+          SnackBar(
+            content: Text(
+              '${strings.text('أكمل إجابة السؤال رقم', 'Complete question', 'Completez la question')} ${i + 1} ${strings.text('قبل التسليم', 'before submitting', 'avant la remise')}',
+            ),
+          ),
         );
         return;
       }
+
       answers.add({
         'question_id': id,
         'type': type,
@@ -742,7 +873,15 @@ class _AssignmentSolvePageState extends State<AssignmentSolvePage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تسليم الإجابات بنجاح')),
+        SnackBar(
+          content: Text(
+            strings.text(
+              'تم تسليم الإجابات بنجاح',
+              'Answers submitted successfully',
+              'Les reponses ont ete envoyees avec succes',
+            ),
+          ),
+        ),
       );
 
       await showDialog<void>(
@@ -759,15 +898,15 @@ class _AssignmentSolvePageState extends State<AssignmentSolvePage> {
                     tween: Tween(begin: 0.0, end: 1.0),
                     duration: const Duration(milliseconds: 550),
                     curve: Curves.elasticOut,
-                    builder: (context, v, child) => Transform.scale(
-                      scale: v,
+                    builder: (context, value, child) => Transform.scale(
+                      scale: value,
                       child: child,
                     ),
                     child: Container(
                       width: 74,
                       height: 74,
                       decoration: BoxDecoration(
-                        color: AppTheme.success.withOpacity(0.12),
+                        color: AppTheme.success.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Icon(
@@ -778,13 +917,21 @@ class _AssignmentSolvePageState extends State<AssignmentSolvePage> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  const Text(
-                    'تم التسليم بنجاح',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  Text(
+                    strings.text(
+                      'تم التسليم بنجاح',
+                      'Submitted successfully',
+                      'Remise envoyee avec succes',
+                    ),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'شكراً لك! سيتم مراجعة إجاباتك من طرف المعلم.',
+                    strings.text(
+                      'شكرا لك! سيتم مراجعة إجاباتك من طرف المعلم.',
+                      'Thank you. Your teacher will review your answers.',
+                      'Merci. Votre enseignant examinera vos reponses.',
+                    ),
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -796,7 +943,7 @@ class _AssignmentSolvePageState extends State<AssignmentSolvePage> {
                     child: FilledButton.icon(
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(Icons.arrow_back_rounded),
-                      label: const Text('العودة'),
+                      label: Text(strings.text('العودة', 'Back', 'Retour')),
                     ),
                   ),
                 ],
@@ -811,7 +958,11 @@ class _AssignmentSolvePageState extends State<AssignmentSolvePage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل في التسليم: $e')),
+        SnackBar(
+          content: Text(
+            '${strings.text('فشل في التسليم', 'Submission failed', 'Echec de la remise')}: $e',
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -820,225 +971,247 @@ class _AssignmentSolvePageState extends State<AssignmentSolvePage> {
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.assignment.title ?? 'واجب';
+    final strings = AppStrings.of(context);
+    final title =
+        widget.assignment.title ?? strings.text('واجب', 'Assignment', 'Devoir');
 
-    final answeredCount = _questions.where((q) {
-      final id = q['id']?.toString() ?? '';
-      final type = q['type']?.toString() ?? '';
+    final answeredCount = _questions.where((question) {
+      final id = question['id']?.toString() ?? '';
+      final type = question['type']?.toString() ?? '';
       if (id.isEmpty) return false;
       if (type == 'mcq') return (_selectedChoices[id] ?? '').trim().isNotEmpty;
       if (type == 'multi_select') return (_multiSelected[id] ?? {}).isNotEmpty;
       if (type == 'true_false') return _trueFalseSelected[id] != null;
-      final text = _textControllers[id]?.text.trim() ?? '';
-      return text.isNotEmpty;
+      return (_textControllers[id]?.text.trim() ?? '').isNotEmpty;
     }).length;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(title: Text(title)),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if ((widget.assignment.description ?? '').trim().isNotEmpty)
-                      Text(widget.assignment.description!),
-                    if ((widget.assignment.description ?? '').trim().isNotEmpty)
-                      const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        Chip(label: Text('عدد الأسئلة: ${_questions.length}')),
-                        Chip(label: Text('المجاب: $answeredCount')),
-                      ],
-                    ),
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if ((widget.assignment.description ?? '').trim().isNotEmpty)
+                    Text(widget.assignment.description!),
+                  if ((widget.assignment.description ?? '').trim().isNotEmpty)
                     const SizedBox(height: 10),
-                    LinearProgressIndicator(
-                      value: _questions.isEmpty
-                          ? 0
-                          : (answeredCount / _questions.length),
-                    ),
-                  ],
-                ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      Chip(
+                        label: Text(
+                          '${strings.text('عدد الأسئلة', 'Questions', 'Questions')}: ${_questions.length}',
+                        ),
+                      ),
+                      Chip(
+                        label: Text(
+                          '${strings.text('المجاب', 'Answered', 'Repondu')}: $answeredCount',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  LinearProgressIndicator(
+                    value: _questions.isEmpty ? 0 : (answeredCount / _questions.length),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 10),
-            if (_questions.isEmpty)
-              const AppEmptyState(
-                icon: Icons.quiz_outlined,
-                title: 'لا توجد أسئلة لهذا الواجب',
-              )
-            else
-              ..._questions.asMap().entries.map((entry) {
-                final index = entry.key;
-                final question = entry.value;
-                final id = question['id']?.toString() ?? '';
-                final type = question['type']?.toString() ?? 'short_text';
-                final prompt = question['prompt']?.toString() ?? '';
-                final options = (question['options'] as List? ?? const [])
-                    .map((e) => e.toString())
-                    .toList();
-                final allowDecimal = question['allow_decimal'] is bool
-                    ? (question['allow_decimal'] as bool)
-                    : true;
+          ),
+          const SizedBox(height: 10),
+          if (_questions.isEmpty)
+            AppEmptyState(
+              icon: Icons.quiz_outlined,
+              title: strings.text(
+                'لا توجد أسئلة لهذا الواجب',
+                'This assignment has no questions',
+                'Ce devoir ne contient aucune question',
+              ),
+            )
+          else
+            ..._questions.asMap().entries.map((entry) {
+              final index = entry.key;
+              final question = entry.value;
+              final id = question['id']?.toString() ?? '';
+              final type = question['type']?.toString() ?? 'short_text';
+              final prompt = question['prompt']?.toString() ?? '';
+              final options = (question['options'] as List? ?? const [])
+                  .map((item) => item.toString())
+                  .toList();
+              final allowDecimal = question['allow_decimal'] is bool
+                  ? (question['allow_decimal'] as bool)
+                  : true;
 
-                final isAnswered = () {
-                  if (type == 'mcq') {
-                    return (_selectedChoices[id] ?? '').trim().isNotEmpty;
-                  }
-                  if (type == 'multi_select') {
-                    return (_multiSelected[id] ?? {}).isNotEmpty;
-                  }
-                  if (type == 'true_false') {
-                    return _trueFalseSelected[id] != null;
-                  }
-                  return (_textControllers[id]?.text.trim() ?? '').isNotEmpty;
-                }();
+              final isAnswered = () {
+                if (type == 'mcq') {
+                  return (_selectedChoices[id] ?? '').trim().isNotEmpty;
+                }
+                if (type == 'multi_select') {
+                  return (_multiSelected[id] ?? {}).isNotEmpty;
+                }
+                if (type == 'true_false') {
+                  return _trueFalseSelected[id] != null;
+                }
+                return (_textControllers[id]?.text.trim() ?? '').isNotEmpty;
+              }();
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withOpacity(0.10),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                'سؤال ${index + 1}',
-                                style: TextStyle(
-                                  color:
-                                      Theme.of(context).colorScheme.primary,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
                             ),
-                            const Spacer(),
-                            Icon(
-                              isAnswered
-                                  ? Icons.check_circle_outline
-                                  : Icons.circle_outlined,
+                            decoration: BoxDecoration(
                               color: Theme.of(context)
                                   .colorScheme
-                                  .onSurfaceVariant,
-                              size: 20,
+                                  .primary
+                                  .withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(999),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          prompt,
-                          style: const TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 10),
-                        if (type == 'mcq')
-                          ...options.map(
-                            (option) => RadioListTile<String>(
-                              value: option,
-                              groupValue: _selectedChoices[id],
-                              contentPadding: EdgeInsets.zero,
-                              onChanged: (value) => setState(
-                                () => _selectedChoices[id] = value ?? '',
+                            child: Text(
+                              '${strings.text('سؤال', 'Question', 'Question')} ${index + 1}',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w700,
                               ),
-                              title: Text(option),
-                            ),
-                          )
-                        else if (type == 'multi_select')
-                          ...options.map(
-                            (option) => CheckboxListTile(
-                              value: (_multiSelected[id] ?? {}).contains(option),
-                              contentPadding: EdgeInsets.zero,
-                              onChanged: (checked) => setState(() {
-                                final set = _multiSelected[id] ?? <String>{};
-                                if (checked == true) {
-                                  set.add(option);
-                                } else {
-                                  set.remove(option);
-                                }
-                                _multiSelected[id] = set;
-                              }),
-                              title: Text(option),
-                            ),
-                          )
-                        else if (type == 'true_false')
-                          Column(
-                            children: [
-                              RadioListTile<bool>(
-                                value: true,
-                                groupValue: _trueFalseSelected[id],
-                                contentPadding: EdgeInsets.zero,
-                                onChanged: (v) => setState(
-                                  () => _trueFalseSelected[id] = v,
-                                ),
-                                title: const Text('صح'),
-                              ),
-                              RadioListTile<bool>(
-                                value: false,
-                                groupValue: _trueFalseSelected[id],
-                                contentPadding: EdgeInsets.zero,
-                                onChanged: (v) => setState(
-                                  () => _trueFalseSelected[id] = v,
-                                ),
-                                title: const Text('خطأ'),
-                              ),
-                            ],
-                          )
-                        else if (type == 'number')
-                          TextField(
-                            controller: _textControllers[id],
-                            keyboardType: TextInputType.numberWithOptions(
-                              decimal: allowDecimal,
-                              signed: false,
-                            ),
-                            decoration: const InputDecoration(
-                              hintText: 'أدخل رقمًا',
-                            ),
-                          )
-                        else
-                          TextField(
-                            controller: _textControllers[id],
-                            maxLines: type == 'paragraph' ? 5 : 1,
-                            decoration: const InputDecoration(
-                              hintText: 'اكتب إجابتك هنا',
                             ),
                           ),
-                      ],
-                    ),
+                          const Spacer(),
+                          Icon(
+                            isAnswered
+                                ? Icons.check_circle_outline
+                                : Icons.circle_outlined,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        prompt,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 10),
+                      if (type == 'mcq')
+                        ...options.map(
+                          (option) => RadioListTile<String>(
+                            value: option,
+                            groupValue: _selectedChoices[id],
+                            contentPadding: EdgeInsets.zero,
+                            onChanged: (value) =>
+                                setState(() => _selectedChoices[id] = value ?? ''),
+                            title: Text(option),
+                          ),
+                        )
+                      else if (type == 'multi_select')
+                        ...options.map(
+                          (option) => CheckboxListTile(
+                            value: (_multiSelected[id] ?? {}).contains(option),
+                            contentPadding: EdgeInsets.zero,
+                            onChanged: (checked) => setState(() {
+                              final set = _multiSelected[id] ?? <String>{};
+                              if (checked == true) {
+                                set.add(option);
+                              } else {
+                                set.remove(option);
+                              }
+                              _multiSelected[id] = set;
+                            }),
+                            title: Text(option),
+                          ),
+                        )
+                      else if (type == 'true_false')
+                        Column(
+                          children: [
+                            RadioListTile<bool>(
+                              value: true,
+                              groupValue: _trueFalseSelected[id],
+                              contentPadding: EdgeInsets.zero,
+                              onChanged: (value) =>
+                                  setState(() => _trueFalseSelected[id] = value),
+                              title: Text(strings.text('صح', 'True', 'Vrai')),
+                            ),
+                            RadioListTile<bool>(
+                              value: false,
+                              groupValue: _trueFalseSelected[id],
+                              contentPadding: EdgeInsets.zero,
+                              onChanged: (value) =>
+                                  setState(() => _trueFalseSelected[id] = value),
+                              title: Text(strings.text('خطأ', 'False', 'Faux')),
+                            ),
+                          ],
+                        )
+                      else if (type == 'number')
+                        TextField(
+                          controller: _textControllers[id],
+                          keyboardType: TextInputType.numberWithOptions(
+                            decimal: allowDecimal,
+                            signed: false,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: strings.text(
+                              'أدخل رقما',
+                              'Enter a number',
+                              'Entrez un nombre',
+                            ),
+                          ),
+                        )
+                      else
+                        TextField(
+                          controller: _textControllers[id],
+                          maxLines: type == 'paragraph' ? 5 : 1,
+                          decoration: InputDecoration(
+                            hintText: strings.text(
+                              'اكتب إجابتك هنا',
+                              'Write your answer here',
+                              'Ecrivez votre reponse ici',
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                );
-              }),
-          ],
-        ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: FilledButton.icon(
-            onPressed: _submitting ? null : _submit,
-            icon: _submitting
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              );
+            }),
+        ],
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        child: FilledButton.icon(
+          onPressed: _submitting ? null : _submit,
+          icon: _submitting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.send_outlined),
+          label: Text(
+            _submitting
+                ? strings.text(
+                    'جار التسليم...',
+                    'Submitting...',
+                    'Envoi en cours...',
                   )
-                : const Icon(Icons.send_outlined),
-            label: Text(_submitting ? 'جارٍ التسليم...' : 'تسليم الإجابات'),
+                : strings.text(
+                    'تسليم الإجابات',
+                    'Submit answers',
+                    'Envoyer les reponses',
+                  ),
           ),
         ),
       ),

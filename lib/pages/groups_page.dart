@@ -3,8 +3,10 @@ import 'package:sign_education/data/db/db_helper_classes.dart';
 import 'package:sign_education/data/models/class_group_model.dart';
 import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/pages/new_group_page.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:sign_education/utils/imageAvatar.dart';
 import 'package:sign_education/widgets/app_state.dart';
+
 import 'chat_page.dart';
 
 class GroupsPage extends StatefulWidget {
@@ -30,14 +32,14 @@ class _GroupsPageState extends State<GroupsPage> {
   Future<void> _loadGroups() async {
     if (mounted) setState(() => _loading = true);
 
-    final List<ClassGroupModel> groups = widget.user.role == 'teacher'
+    final groups = widget.user.role == 'teacher'
         ? await DbHelperClasses.getClassesByTeacher(widget.user.id)
         : await DbHelperClasses.getClassesByStudent(widget.user.id);
 
     final latestByGroup = await Future.wait(
       groups.map((g) async {
         final latest = await DbHelperClasses.getLatestTextMessage(g.classGroupId);
-        return MapEntry(g.classGroupId, latest ?? "");
+        return MapEntry(g.classGroupId, latest ?? '');
       }),
     );
 
@@ -52,9 +54,10 @@ class _GroupsPageState extends State<GroupsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final strings = AppStrings.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("مجموعاتي")),
+      appBar: AppBar(title: Text(strings.myGroups)),
       body: _loading
           ? const AppLoading()
           : RefreshIndicator(
@@ -65,11 +68,11 @@ class _GroupsPageState extends State<GroupsPage> {
                         const SizedBox(height: 120),
                         AppEmptyState(
                           icon: Icons.groups_outlined,
-                          title: "لا توجد مجموعات بعد",
+                          title: strings.noGroupsYet,
                           message: widget.user.role == 'teacher'
-                              ? "أنشئ مجموعة وابدأ المحادثات مع طلابك."
-                              : "سيتم إضافتك إلى المجموعات من طرف المعلم.",
-                          actionLabel: "تحديث",
+                              ? strings.teacherNoGroupsMessage
+                              : strings.studentNoGroupsMessage,
+                          actionLabel: strings.refresh,
                           onAction: _loadGroups,
                         ),
                       ],
@@ -82,7 +85,7 @@ class _GroupsPageState extends State<GroupsPage> {
                       ),
                       itemBuilder: (ctx, i) {
                         final g = _groups[i];
-                        final latestMessage = _latestMessages[g.classGroupId] ?? "";
+                        final latestMessage = _latestMessages[g.classGroupId] ?? '';
                         return ListTile(
                           leading: DefaultAvatar(
                             avatarColor: g.avatarColor,
@@ -94,7 +97,9 @@ class _GroupsPageState extends State<GroupsPage> {
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           subtitle: Text(
-                            latestMessage.isNotEmpty ? latestMessage : "لا توجد رسائل بعد",
+                            latestMessage.isNotEmpty
+                                ? latestMessage
+                                : strings.noMessagesYet,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),

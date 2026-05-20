@@ -5,6 +5,7 @@ import 'package:sign_education/pages/assignments_page.dart';
 import 'package:sign_education/pages/groups_page.dart';
 import 'package:sign_education/pages/home_page.dart';
 import 'package:sign_education/pages/settings_page.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:sign_education/utils/theme_controller.dart';
 
 class MyHomePage extends StatefulWidget {
@@ -20,10 +21,12 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 0;
   late final PageController _pageController;
+  late UserModel _user;
 
   @override
   void initState() {
     super.initState();
+    _user = widget.user;
     _pageController = PageController(initialPage: 0);
   }
 
@@ -46,13 +49,24 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final themeController = context.watch<ThemeController>();
+    final strings = AppStrings.of(context);
     final isDark = themeController.isDarkMode;
 
-    final List<Widget> pages = [
-      HomePage(user: widget.user),
-      AssignmentsPage(user: widget.user),
-      GroupsPage(user: widget.user),
-      SettingsPage(user: widget.user),
+    final pages = <Widget>[
+      HomePage(
+        user: _user,
+        onUserChanged: (updatedUser) {
+          setState(() => _user = updatedUser);
+        },
+      ),
+      AssignmentsPage(user: _user),
+      GroupsPage(user: _user),
+      SettingsPage(
+        user: _user,
+        onUserChanged: (updatedUser) {
+          setState(() => _user = updatedUser);
+        },
+      ),
     ];
 
     return Scaffold(
@@ -83,19 +97,22 @@ class _MyHomePageState extends State<MyHomePage> {
             currentIndex: _selectedIndex,
             onTap: _onItemTapped,
             iconSize: 28,
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'الرئيسية'),
+            items: [
               BottomNavigationBarItem(
-                icon: Icon(Icons.assignment_rounded),
-                label: 'الواجبات',
+                icon: const Icon(Icons.home),
+                label: strings.localeHomeLabel,
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.chat_bubble_rounded),
-                label: 'المحادثات',
+                icon: const Icon(Icons.assignment_rounded),
+                label: strings.assignments,
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.settings),
-                label: 'الإعدادات',
+                icon: const Icon(Icons.chat_bubble_rounded),
+                label: strings.chats,
+              ),
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.settings),
+                label: strings.settings,
               ),
             ],
           ),

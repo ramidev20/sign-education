@@ -4,6 +4,7 @@ import 'package:sign_education/data/models/live_quiz_model.dart';
 import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/pages/teacher_pages/live_quiz_create_page.dart';
 import 'package:sign_education/pages/teacher_pages/teacher_live_quiz_room_page.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:sign_education/widgets/app_state.dart';
 
 class TeacherLiveQuizzesPage extends StatefulWidget {
@@ -33,9 +34,7 @@ class _TeacherLiveQuizzesPageState extends State<TeacherLiveQuizzesPage> {
 
   Future<void> _fetch() async {
     try {
-      final list = await DbHelperLiveQuizzes.getQuizzesByTeacher(
-        widget.user.id,
-      );
+      final list = await DbHelperLiveQuizzes.getQuizzesByTeacher(widget.user.id);
       if (!mounted) return;
       setState(() {
         _active = list.where((q) => q.status == 'active').toList();
@@ -68,11 +67,16 @@ class _TeacherLiveQuizzesPageState extends State<TeacherLiveQuizzesPage> {
   }
 
   Widget _buildList(List<LiveQuizModel> list) {
+    final strings = AppStrings.of(context);
     if (_loading) return const AppLoading();
     if (list.isEmpty) {
-      return const AppEmptyState(
+      return AppEmptyState(
         icon: Icons.quiz_outlined,
-        title: 'لا توجد اختبارات حالياً',
+        title: strings.text(
+          'لا توجد اختبارات حالياً',
+          'No quizzes right now',
+          "Aucun quiz pour l'instant",
+        ),
       );
     }
 
@@ -82,18 +86,18 @@ class _TeacherLiveQuizzesPageState extends State<TeacherLiveQuizzesPage> {
         padding: const EdgeInsets.all(16),
         itemCount: list.length,
         itemBuilder: (context, index) {
-          final q = list[index];
+          final quiz = list[index];
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
             child: ListTile(
               contentPadding: const EdgeInsets.all(14),
-              title: Text(q.title),
+              title: Text(quiz.title),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 6),
                   Text(
-                    q.promptText,
+                    quiz.promptText,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -103,9 +107,13 @@ class _TeacherLiveQuizzesPageState extends State<TeacherLiveQuizzesPage> {
                     runSpacing: 8,
                     children: [
                       Chip(
-                        label: Text(q.status == 'active' ? 'مباشر' : 'منتهي'),
+                        label: Text(
+                          quiz.status == 'active'
+                              ? strings.text('مباشر', 'Live', 'En direct')
+                              : strings.text('منتهي', 'Finished', 'Termine'),
+                        ),
                       ),
-                      Chip(label: Text(_fmt(q.createdAt))),
+                      Chip(label: Text(_fmt(quiz.createdAt))),
                     ],
                   ),
                 ],
@@ -115,7 +123,7 @@ class _TeacherLiveQuizzesPageState extends State<TeacherLiveQuizzesPage> {
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => TeacherLiveQuizRoomPage(quiz: q),
+                    builder: (_) => TeacherLiveQuizRoomPage(quiz: quiz),
                   ),
                 );
                 if (!mounted) return;
@@ -130,7 +138,9 @@ class _TeacherLiveQuizzesPageState extends State<TeacherLiveQuizzesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final initialIndex = widget.initialTabIndex.clamp(0, 1).toInt();
+
     return DefaultTabController(
       length: 2,
       initialIndex: initialIndex,
@@ -141,14 +151,21 @@ class _TeacherLiveQuizzesPageState extends State<TeacherLiveQuizzesPage> {
             body: Column(
               children: [
                 Container(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withOpacity(0.05),
-                  child: const TabBar(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.05),
+                  child: TabBar(
                     dividerColor: Colors.transparent,
                     tabs: [
-                      Tab(text: 'مباشر'),
-                      Tab(text: 'منتهية'),
+                      Tab(text: strings.text('مباشر', 'Live', 'En direct')),
+                      Tab(
+                        text: strings.text(
+                          'منتهية',
+                          'Finished',
+                          'Termines',
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -167,7 +184,13 @@ class _TeacherLiveQuizzesPageState extends State<TeacherLiveQuizzesPage> {
                 return FloatingActionButton.extended(
                   onPressed: _openCreate,
                   icon: const Icon(Icons.add),
-                  label: const Text('اختبار مباشر'),
+                  label: Text(
+                    strings.text(
+                      'اختبار مباشر',
+                      'New live quiz',
+                      'Nouveau quiz',
+                    ),
+                  ),
                 );
               },
             ),
@@ -177,3 +200,4 @@ class _TeacherLiveQuizzesPageState extends State<TeacherLiveQuizzesPage> {
     );
   }
 }
+

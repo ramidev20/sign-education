@@ -7,6 +7,7 @@ import 'package:sign_education/data/db/db_helper_assigments.dart';
 import 'package:sign_education/data/db/db_helper_classes.dart';
 import 'package:sign_education/data/models/assignment_model.dart';
 import 'package:sign_education/pages/chat_settings_page.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:sign_education/utils/imageAvatar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -272,6 +273,7 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> _openAssignmentReminderDialog() async {
     if (widget.user.role != 'teacher') return;
+    final strings = AppStrings.of(context);
     setState(() => _sendingReminder = true);
     try {
       final assignments = await DbHelperAssignments.getAssignmentsByTeacher(
@@ -280,7 +282,15 @@ class _ChatPageState extends State<ChatPage> {
       if (!mounted) return;
       if (assignments.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('لا توجد واجبات لإرسال تذكير بها')),
+          SnackBar(
+            content: Text(
+              strings.text(
+                'لا توجد واجبات لإرسال تذكير بها',
+                'No assignments to remind',
+                'Aucun devoir a rappeler',
+              ),
+            ),
+          ),
         );
         return;
       }
@@ -290,19 +300,31 @@ class _ChatPageState extends State<ChatPage> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('تذكير بواجب'),
+          title: Text(
+            strings.text(
+              'تذكير بواجب',
+              'Assignment reminder',
+              'Rappel de devoir',
+            ),
+          ),
           content: StatefulBuilder(
             builder: (context, setDialogState) => Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
                   initialValue: selected?.assignmentId,
-                  decoration: const InputDecoration(labelText: 'اختر الواجب'),
+                  decoration: InputDecoration(
+                    labelText:
+                        strings.text('اختر الواجب', 'Select assignment', 'Choisir un devoir'),
+                  ),
                   items: assignments
                       .map(
                         (a) => DropdownMenuItem<String>(
                           value: a.assignmentId,
-                          child: Text(a.title ?? 'واجب'),
+                          child: Text(
+                            a.title ??
+                                strings.text('واجب', 'Assignment', 'Devoir'),
+                          ),
                         ),
                       )
                       .toList(),
@@ -318,8 +340,12 @@ class _ChatPageState extends State<ChatPage> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: noteController,
-                  decoration: const InputDecoration(
-                    labelText: 'ملاحظة إضافية (اختياري)',
+                  decoration: InputDecoration(
+                    labelText: strings.text(
+                      'ملاحظة إضافية (اختياري)',
+                      'Optional note',
+                      'Note optionnelle',
+                    ),
                   ),
                 ),
               ],
@@ -328,11 +354,17 @@ class _ChatPageState extends State<ChatPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('إلغاء'),
+              child: Text(strings.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('إرسال التذكير'),
+              child: Text(
+                strings.text(
+                  'إرسال التذكير',
+                  'Send reminder',
+                  'Envoyer le rappel',
+                ),
+              ),
             ),
           ],
         ),
@@ -340,7 +372,11 @@ class _ChatPageState extends State<ChatPage> {
 
       if (ok != true || selected == null) return;
       final reminderText = noteController.text.trim().isEmpty
-          ? 'تذكير: يرجى حل الواجب في الوقت المحدد.'
+          ? strings.text(
+              'تذكير: يرجى حل الواجب في الوقت المحدد.',
+              'Reminder: please complete the assignment on time.',
+              "Rappel : veuillez terminer le devoir a temps.",
+            )
           : noteController.text.trim();
 
       final messageId = const Uuid().v4();
@@ -351,7 +387,8 @@ class _ChatPageState extends State<ChatPage> {
         replyPreview: null,
         reactions: const <String>[],
         messageType: 'assignment_reminder',
-        assignmentTitle: selected!.title ?? 'واجب',
+        assignmentTitle:
+            selected!.title ?? strings.text('واجب', 'Assignment', 'Devoir'),
         assignmentDueAt: selected!.completeAt.toIso8601String(),
       );
 
@@ -522,7 +559,13 @@ class _ChatPageState extends State<ChatPage> {
                             }),
                             ListTile(
                               leading: const Icon(Icons.reply_rounded),
-                              title: const Text('رد على الرسالة'),
+                                  title: Text(
+                                    AppStrings.of(context).text(
+                                      'رد على الرسالة',
+                                      'Reply to message',
+                                      'Repondre au message',
+                                    ),
+                                  ),
                               onTap: () => Navigator.pop(context, '__reply__'),
                             ),
                           ],

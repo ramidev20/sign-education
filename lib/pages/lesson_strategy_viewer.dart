@@ -10,9 +10,13 @@ import 'package:sign_education/strategy_pages/interactive_six_hat_view.dart';
 import 'package:sign_education/strategy_pages/interactive_story_view.dart';
 import 'package:sign_education/strategy_pages/interactive_timeline_view.dart';
 import 'package:sign_education/strategy_pages/interactive_triangle_view.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:sign_education/utils/strategy_catalog.dart';
 
-String strategyLabelForType(String type) => StrategyCatalog.labelForType(type);
+String strategyLabelForType(BuildContext context, String type) {
+  final strings = AppStrings.of(context);
+  return StrategyCatalog.labelForType(type, strings);
+}
 
 IconData strategyIconForType(String type) => StrategyCatalog.iconForType(type);
 
@@ -106,10 +110,11 @@ void openLessonStrategy(
       );
       return;
     default:
+      final strings = AppStrings.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'هذه الاستراتيجية غير مدعومة: ${strategy.strategyType}',
+            '${strings.tr('strategy.unsupported')}: ${strategy.strategyType}',
           ),
         ),
       );

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:sign_education/auth.dart';
 import 'package:sign_education/data/db/db_helper_users.dart';
 import 'package:sign_education/navigation.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'signup_page.dart';
@@ -33,17 +34,17 @@ class _LoginPageState extends State<LoginPage> {
 
     _authSub = supabase.auth.onAuthStateChange.listen((data) async {
       final session = data.session;
-      if (session?.user == null) return;
-      if (_handlingAuthChange) return;
+      if (session?.user == null || _handlingAuthChange) return;
 
       _handlingAuthChange = true;
       try {
         await _completeLogin(session!.user);
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('تعذر إكمال تسجيل الدخول: $e')));
+        final strings = AppStrings.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.loginCompleteError(e))),
+        );
       } finally {
         _handlingAuthChange = false;
       }
@@ -63,7 +64,8 @@ class _LoginPageState extends State<LoginPage> {
 
     final userModel = await DbHelperUsers.getUserById(supabaseUser.id);
     if (userModel == null) {
-      throw Exception("لم يتم العثور على الملف الشخصي للمستخدم.");
+      final strings = AppStrings.of(context);
+      throw Exception(strings.userProfileNotFound);
     }
 
     await StorageService.saveUser(userModel);
@@ -72,7 +74,7 @@ class _LoginPageState extends State<LoginPage> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => MyHomePage(title: "EduBridge", user: userModel),
+        builder: (_) => MyHomePage(title: 'EduBridge', user: userModel),
       ),
     );
   }
@@ -88,22 +90,23 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (res.user == null) {
-        throw const AuthException(
-          'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
-        );
+        final strings = AppStrings.of(context);
+        throw AuthException(strings.invalidCredentials);
       }
 
       await _completeLogin(res.user!);
     } on AuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("⚠️ ${e.message}")));
+      final strings = AppStrings.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.authWarning(e.message))),
+      );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("خطأ غير متوقع: $e")));
+      final strings = AppStrings.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.unexpectedError(e))),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -118,8 +121,9 @@ class _LoginPageState extends State<LoginPage> {
       );
     } catch (e) {
       if (!mounted) return;
+      final strings = AppStrings.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("تعذر تسجيل الدخول عبر Google: $e")),
+        SnackBar(content: Text(strings.googleSignInError(e))),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -130,10 +134,11 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final strings = AppStrings.of(context);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(title: const Text("المنصة التعليمية"), centerTitle: true),
+      appBar: AppBar(title: Text(strings.platformTitle), centerTitle: true),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -147,7 +152,7 @@ class _LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      "مرحباً بعودتك",
+                      strings.welcomeBack,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: colorScheme.primary,
@@ -156,7 +161,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "سجّل الدخول للمتابعة",
+                      strings.signInContinue,
                       style: theme.textTheme.bodyMedium,
                       textAlign: TextAlign.center,
                     ),
@@ -164,25 +169,23 @@ class _LoginPageState extends State<LoginPage> {
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: "البريد الإلكتروني",
-                        prefixIcon: Icon(Icons.email_outlined),
+                      decoration: InputDecoration(
+                        labelText: strings.email,
+                        prefixIcon: const Icon(Icons.email_outlined),
                       ),
-                      validator: (v) => v == null || !v.contains("@")
-                          ? "أدخل بريداً إلكترونياً صالحاً"
-                          : null,
+                      validator: (v) =>
+                          v == null || !v.contains('@') ? strings.emailInvalid : null,
                     ),
                     const SizedBox(height: 15),
                     TextFormField(
                       controller: _passwordController,
                       obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: "كلمة المرور",
-                        prefixIcon: Icon(Icons.lock_outline),
+                      decoration: InputDecoration(
+                        labelText: strings.password,
+                        prefixIcon: const Icon(Icons.lock_outline),
                       ),
-                      validator: (v) => v == null || v.length < 6
-                          ? "الحد الأدنى 6 أحرف"
-                          : null,
+                      validator: (v) =>
+                          v == null || v.length < 6 ? strings.passwordMin : null,
                     ),
                     const SizedBox(height: 24),
                     FilledButton(
@@ -196,7 +199,7 @@ class _LoginPageState extends State<LoginPage> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text("تسجيل الدخول"),
+                          : Text(strings.signIn),
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
@@ -206,9 +209,7 @@ class _LoginPageState extends State<LoginPage> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: colorScheme.outlineVariant,
-                          ),
+                          border: Border.all(color: colorScheme.outlineVariant),
                           color: theme.colorScheme.surface,
                         ),
                         child: const Text(
@@ -221,7 +222,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       onPressed: _isLoading ? null : _loginWithGoogle,
-                      label: const Text("تسجيل الدخول باستخدام Google"),
+                      label: Text(strings.signInWithGoogle),
                       style: OutlinedButton.styleFrom(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -247,7 +248,7 @@ class _LoginPageState extends State<LoginPage> {
                         foregroundColor: colorScheme.primary,
                         textStyle: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      child: const Text("لا تملك حساباً؟ أنشئ حساباً"),
+                      child: Text(strings.noAccountCreate),
                     ),
                   ],
                 ),
@@ -259,4 +260,3 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-

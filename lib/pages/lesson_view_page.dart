@@ -10,6 +10,7 @@ import 'package:sign_education/pages/strategy_json_editor_page.dart';
 import 'package:sign_education/pages/strategy_visual_editor_router.dart';
 import 'package:sign_education/utils/offline_lesson_cache.dart';
 import 'package:sign_education/utils/offline_strategy_cache.dart';
+import 'package:sign_education/utils/app_strings.dart';
 
 class LessonViewPage extends StatefulWidget {
   final LessonModel lesson;
@@ -138,20 +139,21 @@ class _LessonViewPageState extends State<LessonViewPage> {
   }
 
   Future<void> _deleteStrategy(LessonStrategyModel strategy) async {
+    final strings = AppStrings.of(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('حذف الاستراتيجية؟'),
-          content: const Text('سيتم حذفها ولن تظهر للطلاب.'),
+          title: Text(strings.tr('lesson_view.strategy_delete.title')),
+          content: Text(strings.tr('lesson_view.strategy_delete.warning')),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('إلغاء'),
+              child: Text(strings.tr('app.cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('حذف'),
+              child: Text(strings.tr('lesson_view.strategy_delete.action')),
             ),
           ],
         );
@@ -164,6 +166,7 @@ class _LessonViewPageState extends State<LessonViewPage> {
   }
 
   Future<void> _saveLessonOffline() async {
+    final strings = AppStrings.of(context);
     final lessonId = _lesson.lessonId;
     if (lessonId == null || lessonId.isEmpty) return;
 
@@ -181,7 +184,9 @@ class _LessonViewPageState extends State<LessonViewPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'تم حفظ الدرس دون اتصال (${strategies.length} استراتيجية).',
+            strings
+                .tr('lesson_view.offline.saved')
+                .replaceAll('{n}', '${strategies.length}'),
           ),
         ),
       );
@@ -189,13 +194,18 @@ class _LessonViewPageState extends State<LessonViewPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('تعذر حفظ الدرس دون اتصال: $e')));
+      ).showSnackBar(
+        SnackBar(
+          content: Text('${strings.tr('lesson_view.offline.save_failed')}: $e'),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _savingOffline = false);
     }
   }
 
   Future<void> _removeLessonOffline() async {
+    final strings = AppStrings.of(context);
     final lessonId = _lesson.lessonId;
     if (lessonId == null || lessonId.isEmpty) return;
 
@@ -206,13 +216,17 @@ class _LessonViewPageState extends State<LessonViewPage> {
       if (!mounted) return;
       setState(() => _isSavedOffline = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حذف الدرس من الحفظ دون اتصال')),
+        SnackBar(content: Text(strings.tr('lesson_view.offline.removed'))),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('تعذر حذف الحفظ دون اتصال: $e')));
+      ).showSnackBar(
+        SnackBar(
+          content: Text('${strings.tr('lesson_view.offline.remove_failed')}: $e'),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _savingOffline = false);
     }
@@ -221,19 +235,22 @@ class _LessonViewPageState extends State<LessonViewPage> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final strings = AppStrings.of(context);
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: _isStudent
-          ? Scaffold(
+    return _isStudent
+        ? Scaffold(
               appBar: AppBar(
-                title: Text(_lesson.title ?? 'درس'),
+                title: Text(
+                  (_lesson.title?.trim().isNotEmpty ?? false)
+                      ? _lesson.title!.trim()
+                      : strings.tr('lessons.lesson_fallback_title'),
+                ),
                 centerTitle: true,
                 actions: [
                   IconButton(
                     tooltip: _isSavedOffline
-                        ? 'Remove Offline'
-                        : 'Save Offline',
+                        ? strings.tr('lesson_view.offline.remove')
+                        : strings.tr('lesson_view.offline.save'),
                     onPressed: _savingOffline
                         ? null
                         : (_isSavedOffline
@@ -274,14 +291,18 @@ class _LessonViewPageState extends State<LessonViewPage> {
                             child: Text(
                               _strategiesOnlineError == null ||
                                       _strategiesOnlineError!.isEmpty
-                                  ? 'عرض الاستراتيجيات المحفوظة (وضع دون اتصال).'
-                                  : 'تعذر تحميل الاستراتيجيات عبر الإنترنت. يتم عرض المحفوظ.',
+                                  ? strings.tr(
+                                      'lesson_view.strategies.offline_banner',
+                                    )
+                                  : strings.tr(
+                                      'lesson_view.strategies.offline_banner_error',
+                                    ),
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ),
                           TextButton(
                             onPressed: _refreshStrategies,
-                            child: const Text('تحديث'),
+                            child: Text(strings.tr('app.refresh')),
                           ),
                         ],
                       ),
@@ -301,7 +322,7 @@ class _LessonViewPageState extends State<LessonViewPage> {
                             child: Padding(
                               padding: const EdgeInsets.all(16),
                               child: Text(
-                                'تعذر تحميل الاستراتيجيات: ${snapshot.error}',
+                                '${strings.tr('lesson_view.strategies.load_failed')}: ${snapshot.error}',
                               ),
                             ),
                           );
@@ -313,7 +334,7 @@ class _LessonViewPageState extends State<LessonViewPage> {
                         if (tileCount == 0) {
                           return const Center(
                             child: Text(
-                              'لا يوجد محتوى ولا استراتيجيات لهذا الدرس',
+                              strings.tr('lesson_view.strategies.empty'),
                             ),
                           );
                         }
@@ -335,11 +356,11 @@ class _LessonViewPageState extends State<LessonViewPage> {
                               final title =
                                   (s.title?.trim().isNotEmpty ?? false)
                                   ? s.title!.trim()
-                                  : strategyLabelForType(s.strategyType);
+                                  : strategyLabelForType(context, s.strategyType);
                               return _StrategyTile(
                                 title: title,
                                 subtitle:
-                                    '${strategyLabelForType(s.strategyType)} • ${_resultTypeLabel(s.resultType)}',
+                                    '${strategyLabelForType(context, s.strategyType)} • ${_resultTypeLabel(s.resultType)}',
                                 icon: strategyIconForType(s.strategyType),
                                 onTap: () =>
                                     openLessonStrategy(context, widget.user, s),
@@ -355,13 +376,17 @@ class _LessonViewPageState extends State<LessonViewPage> {
             )
           : Scaffold(
               appBar: AppBar(
-                title: Text(_lesson.title ?? 'درس'),
+                title: Text(
+                  (_lesson.title?.trim().isNotEmpty ?? false)
+                      ? _lesson.title!.trim()
+                      : strings.tr('lessons.lesson_fallback_title'),
+                ),
                 centerTitle: true,
                 actions: [
                   IconButton(
                     tooltip: _isSavedOffline
-                        ? 'Remove Offline'
-                        : 'Save Offline',
+                        ? strings.tr('lesson_view.offline.remove')
+                        : strings.tr('lesson_view.offline.save'),
                     onPressed: _savingOffline
                         ? null
                         : (_isSavedOffline
@@ -402,14 +427,18 @@ class _LessonViewPageState extends State<LessonViewPage> {
                             child: Text(
                               _strategiesOnlineError == null ||
                                       _strategiesOnlineError!.isEmpty
-                                  ? 'عرض الاستراتيجيات المحفوظة (وضع دون اتصال).'
-                                  : 'تعذر تحميل الاستراتيجيات عبر الإنترنت. يتم عرض المحفوظ.',
+                                  ? strings.tr(
+                                      'lesson_view.strategies.offline_banner',
+                                    )
+                                  : strings.tr(
+                                      'lesson_view.strategies.offline_banner_error',
+                                    ),
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ),
                           TextButton(
                             onPressed: _refreshStrategies,
-                            child: const Text('تحديث'),
+                            child: Text(strings.tr('app.refresh')),
                           ),
                         ],
                       ),
@@ -429,7 +458,7 @@ class _LessonViewPageState extends State<LessonViewPage> {
                             child: Padding(
                               padding: const EdgeInsets.all(16),
                               child: Text(
-                                'تعذر تحميل الاستراتيجيات: ${snapshot.error}',
+                                '${strings.tr('lesson_view.strategies.load_failed')}: ${snapshot.error}',
                               ),
                             ),
                           );
@@ -535,11 +564,11 @@ class _LessonViewPageState extends State<LessonViewPage> {
                                     final title =
                                         (s.title?.trim().isNotEmpty ?? false)
                                         ? s.title!.trim()
-                                        : strategyLabelForType(s.strategyType);
+                                        : strategyLabelForType(context, s.strategyType);
                                     return _TeacherStrategyTile(
                                       title: title,
                                       subtitle:
-                                          '${strategyLabelForType(s.strategyType)} • ${_resultTypeLabel(s.resultType)}',
+                                          '${strategyLabelForType(context, s.strategyType)} • ${_resultTypeLabel(s.resultType)}',
                                       icon: strategyIconForType(s.strategyType),
                                       onTap: () => openLessonStrategy(
                                         context,
@@ -772,12 +801,12 @@ class _TeacherStrategyTile extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(left: 6),
                         child: PopupMenuButton<String>(
-                          tooltip: 'المزيد',
+                          tooltip: strings.tr('lesson_view.more'),
                           onSelected: (v) => onMoreActions!(v),
                           itemBuilder: (context) => const [
                             PopupMenuItem(
                               value: 'json',
-                              child: Text('تعديل يدوي (JSON)'),
+                              child: Text(strings.tr('lesson_view.edit_json')),
                             ),
                           ],
                           child: Container(

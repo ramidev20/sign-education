@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_assigments.dart';
-import 'package:sign_education/data/models/assignment_delivery_model.dart';
 import 'package:sign_education/data/db/db_helper_deliveries.dart';
+import 'package:sign_education/data/models/assignment_delivery_model.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:sign_education/utils/app_theme.dart';
 
 class AssignmentDeliveriesPage extends StatefulWidget {
@@ -22,6 +23,9 @@ class AssignmentDeliveriesPage extends StatefulWidget {
 class _AssignmentDeliveriesPageState extends State<AssignmentDeliveriesPage> {
   List<DeliveryModel> deliveries = [];
   Map<String, Map<String, dynamic>> _questionById = {};
+
+  AppStrings get _strings =>
+      AppStrings(Localizations.localeOf(context).languageCode);
 
   @override
   void initState() {
@@ -48,39 +52,66 @@ class _AssignmentDeliveriesPageState extends State<AssignmentDeliveriesPage> {
       if (!mounted) return;
       setState(() => _questionById = map);
     } catch (_) {
-      // ignore (preview will fallback to generic labels)
+      // Keep generic preview labels if loading fails.
     }
   }
 
-  String _formatAnswerValue(dynamic value) {
-    if (value is bool) return value ? 'صح' : 'خطأ';
-    if (value is List) return value.map((e) => e.toString()).join('، ');
+  String _formatAnswerValue(AppStrings strings, dynamic value) {
+    if (value is bool) {
+      return value
+          ? strings.text('صح', 'True', 'Vrai')
+          : strings.text('خطأ', 'False', 'Faux');
+    }
+    if (value is List) return value.map((e) => e.toString()).join(', ');
     return (value ?? '').toString();
+  }
+
+  String _statusText(AppStrings strings, String status) {
+    switch (status) {
+      case 'approved':
+        return strings.text('تم القبول', 'Approved', 'Approuve');
+      case 'rejected':
+        return strings.text('تم الرفض', 'Rejected', 'Refuse');
+      default:
+        return strings.text('بانتظار المراجعة', 'Pending review', 'En attente de revision');
+    }
   }
 
   Future<void> fetchDeliveries() async {
     final list = await DbHelperDeliveries.getDeliveriesByAssignment(
       widget.assignmentId,
     );
+    if (!mounted) return;
     setState(() => deliveries = list);
   }
 
   Future<void> _showRejectDialog(DeliveryModel delivery) async {
+    final strings = _strings;
     final controller = TextEditingController();
 
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("رفض التسليم"),
+        title: Text(strings.text('رفض التسليم', 'Reject submission', 'Refuser la remise')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("يرجى كتابة سبب الرفض:"),
+            Text(
+              strings.text(
+                'يرجى كتابة سبب الرفض:',
+                'Please enter the rejection reason:',
+                'Veuillez saisir la raison du refus :',
+              ),
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
-              decoration: const InputDecoration(
-                hintText: "مثلاً: الملف غير مكتمل أو الحل غير صحيح",
+              decoration: InputDecoration(
+                hintText: strings.text(
+                  'مثلا: الحل غير مكتمل',
+                  'For example: the work is incomplete',
+                  'Par exemple : le travail est incomplet',
+                ),
               ),
               maxLines: 3,
             ),
@@ -89,24 +120,28 @@ class _AssignmentDeliveriesPageState extends State<AssignmentDeliveriesPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("إلغاء"),
+            child: Text(strings.cancel),
           ),
           ElevatedButton(
             onPressed: () {
               if (controller.text.trim().isEmpty) return;
               Navigator.pop(context, controller.text.trim());
             },
-            child: const Text("تأكيد الرفض"),
+            child: Text(
+              strings.text('تأكيد الرفض', 'Confirm rejection', 'Confirmer le refus'),
+            ),
           ),
         ],
       ),
     );
 
+    controller.dispose();
+
     if (result != null && result.isNotEmpty) {
       await DbHelperDeliveries.updateDeliveryStatus(
         deliveryId: delivery.deliveryId!,
         status: 'rejected',
-        comment: result, // 🆕 Store rejection reason
+        comment: result,
       );
       fetchDeliveries();
     }
@@ -114,19 +149,29 @@ class _AssignmentDeliveriesPageState extends State<AssignmentDeliveriesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: Text('تسليمات ${widget.title}')),
+      appBar: AppBar(
+        title: Text(
+          '${strings.text('تسليمات', 'Deliveries', 'Remises')} ${widget.title}',
+        ),
+      ),
       body: deliveries.isEmpty
           ? Center(
               child: Text(
-                "لا توجد تسليمات بعد",
+                strings.text(
+                  'لا توجد تسليمات بعد',
+                  'No deliveries yet',
+                  'Aucune remise pour le moment',
+                ),
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
             )
           : ListView.builder(
               itemCount: deliveries.length,
               itemBuilder: (context, index) {
-                final d = deliveries[index];
+                final delivery = deliveries[index];
                 return Card(
                   margin: const EdgeInsets.all(12),
                   child: ListTile(
@@ -135,7 +180,7 @@ class _AssignmentDeliveriesPageState extends State<AssignmentDeliveriesPage> {
                       vertical: 12,
                     ),
                     title: Text(
-                      d.username,
+                      delivery.username,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     subtitle: Column(
@@ -143,36 +188,32 @@ class _AssignmentDeliveriesPageState extends State<AssignmentDeliveriesPage> {
                       children: [
                         const SizedBox(height: 4),
                         Text(
-                          "تم التسليم: ${d.deliveryDate.toString().substring(0, 16)}",
+                          '${strings.text('تم التسليم', 'Submitted', 'Remis')}: ${delivery.deliveryDate.toString().substring(0, 16)}',
                         ),
-                        if (d.status == 'approved')
-                          Text(
-                            "✅ تم القبول",
-                            style: TextStyle(color: AppTheme.success),
+                        Text(
+                          _statusText(strings, delivery.status),
+                          style: TextStyle(
+                            color: delivery.status == 'approved'
+                                ? AppTheme.success
+                                : delivery.status == 'rejected'
+                                    ? Theme.of(context).colorScheme.error
+                                    : Theme.of(context).colorScheme.primary,
                           ),
-                        if (d.status == 'rejected') ...[
+                        ),
+                        if (delivery.status == 'rejected' &&
+                            delivery.statusComment.isNotEmpty)
                           Text(
-                            "❌ تم الرفض",
+                            '${strings.text('السبب', 'Reason', 'Raison')}: ${delivery.statusComment}',
                             style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
-                          if (d.statusComment.isNotEmpty)
-                            Text(
-                              "السبب: ${d.statusComment}",
-                              style: TextStyle(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                              ),
-                            ),
-                        ],
                       ],
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if ((d.answersJson?['answers'] as List?) != null)
+                        if ((delivery.answersJson?['answers'] as List?) != null)
                           IconButton(
                             icon: Icon(
                               Icons.preview_outlined,
@@ -182,54 +223,56 @@ class _AssignmentDeliveriesPageState extends State<AssignmentDeliveriesPage> {
                               showDialog<void>(
                                 context: context,
                                 builder: (context) => AlertDialog(
-                                  title: Text('إجابات ${d.username}'),
+                                  title: Text(
+                                    '${strings.text('إجابات', 'Answers', 'Reponses')} ${delivery.username}',
+                                  ),
                                   content: SizedBox(
                                     width: 420,
                                     child: ListView(
                                       shrinkWrap: true,
                                       children: [
-                                        ...((d.answersJson?['answers'] as List?) ??
+                                        ...((delivery.answersJson?['answers'] as List?) ??
                                                 const [])
                                             .whereType<Map>()
-                                            .map(
-                                              (a) {
-                                                final aa =
-                                                    Map<String, dynamic>.from(a);
-                                                final qid =
-                                                    (aa['question_id'] ?? '')
-                                                        .toString();
-                                                final q =
-                                                    _questionById[qid] ?? <String, dynamic>{};
-                                                final prompt =
-                                                    (q['prompt'] ?? 'سؤال')
-                                                        .toString();
-                                                final type =
-                                                    (aa['type'] ?? '').toString();
-                                                final value = aa['value'];
+                                            .map((answer) {
+                                              final typedAnswer =
+                                                  Map<String, dynamic>.from(answer);
+                                              final questionId =
+                                                  (typedAnswer['question_id'] ?? '')
+                                                      .toString();
+                                              final question =
+                                                  _questionById[questionId] ??
+                                                      <String, dynamic>{};
+                                              final prompt = (question['prompt'] ??
+                                                      strings.text('سؤال', 'Question', 'Question'))
+                                                  .toString();
+                                              final type =
+                                                  (typedAnswer['type'] ?? '')
+                                                      .toString();
+                                              final value = typedAnswer['value'];
 
-                                                return ListTile(
-                                                  title: Text(prompt),
-                                                  subtitle: Text(
-                                                    _formatAnswerValue(value),
+                                              return ListTile(
+                                                title: Text(prompt),
+                                                subtitle: Text(
+                                                  _formatAnswerValue(strings, value),
+                                                ),
+                                                trailing: Text(
+                                                  type,
+                                                  style: TextStyle(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
                                                   ),
-                                                  trailing: Text(
-                                                    type,
-                                                    style: TextStyle(
-                                                      color: Theme.of(context)
-                                                          .colorScheme
-                                                          .onSurfaceVariant,
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            ),
+                                                ),
+                                              );
+                                            }),
                                       ],
                                     ),
                                   ),
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.pop(context),
-                                      child: const Text('إغلاق'),
+                                      child: Text(strings.text('إغلاق', 'Close', 'Fermer')),
                                     ),
                                   ],
                                 ),
@@ -240,22 +283,26 @@ class _AssignmentDeliveriesPageState extends State<AssignmentDeliveriesPage> {
                           onSelected: (choice) async {
                             if (choice == 'accept') {
                               await DbHelperDeliveries.updateDeliveryStatus(
-                                deliveryId: d.deliveryId!,
+                                deliveryId: delivery.deliveryId!,
                                 status: 'approved',
                               );
                               fetchDeliveries();
                             } else if (choice == 'reject') {
-                              await _showRejectDialog(d);
+                              await _showRejectDialog(delivery);
                             }
                           },
                           itemBuilder: (context) => [
-                            const PopupMenuItem(
+                            PopupMenuItem(
                               value: 'accept',
-                              child: Text('قبول'),
+                              child: Text(
+                                strings.text('قبول', 'Approve', 'Approuver'),
+                              ),
                             ),
-                            const PopupMenuItem(
+                            PopupMenuItem(
                               value: 'reject',
-                              child: Text('رفض'),
+                              child: Text(
+                                strings.text('رفض', 'Reject', 'Refuser'),
+                              ),
                             ),
                           ],
                           icon: const Icon(Icons.more_vert),

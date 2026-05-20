@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:uuid/uuid.dart';
 
 class AssignmentQuestionsEditorPage extends StatefulWidget {
@@ -18,6 +19,9 @@ class _AssignmentQuestionsEditorPageState
     extends State<AssignmentQuestionsEditorPage> {
   final List<_QuestionDraft> _drafts = [];
 
+  AppStrings get _strings =>
+      AppStrings(Localizations.localeOf(context).languageCode);
+
   @override
   void initState() {
     super.initState();
@@ -26,15 +30,15 @@ class _AssignmentQuestionsEditorPageState
       return;
     }
 
-    for (final q in widget.initialQuestions) {
-      _drafts.add(_QuestionDraft.fromJson(q));
+    for (final question in widget.initialQuestions) {
+      _drafts.add(_QuestionDraft.fromJson(question));
     }
   }
 
   @override
   void dispose() {
-    for (final d in _drafts) {
-      d.dispose();
+    for (final draft in _drafts) {
+      draft.dispose();
     }
     super.dispose();
   }
@@ -52,12 +56,21 @@ class _AssignmentQuestionsEditorPageState
   }
 
   void _confirm() {
+    final strings = _strings;
     final payload = <Map<String, dynamic>>[];
-    for (final d in _drafts) {
-      final json = d.toJson();
+    for (final draft in _drafts) {
+      final json = draft.toJson();
       if (json == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('أكمل جميع الحقول المطلوبة في الأسئلة')),
+          SnackBar(
+            content: Text(
+              strings.text(
+                'أكمل جميع الحقول المطلوبة في الأسئلة',
+                'Complete all required question fields',
+                'Completez tous les champs obligatoires des questions',
+              ),
+            ),
+          ),
         );
         return;
       }
@@ -69,70 +82,68 @@ class _AssignmentQuestionsEditorPageState
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('أسئلة الواجب'),
-          centerTitle: true,
-          actions: [
-            TextButton(
-              onPressed: _confirm,
-              child: Text(
-                'تأكيد',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: cs.primary,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ],
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          strings.text('أسئلة الواجب', 'Assignment questions', 'Questions du devoir'),
         ),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 80),
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'إدارة الأسئلة',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    FilledButton.icon(
-                      onPressed: _addQuestion,
-                      icon: const Icon(Icons.add),
-                      label: const Text('سؤال'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            ..._drafts.asMap().entries.map((entry) {
-              final index = entry.key;
-              final draft = entry.value;
-              return _AssignmentQuestionCard(
-                index: index,
-                question: draft,
-                onRemove: () => _removeQuestion(index),
-              );
-            }),
-          ],
-        ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: FilledButton.icon(
+        centerTitle: true,
+        actions: [
+          TextButton(
             onPressed: _confirm,
-            icon: const Icon(Icons.check_rounded),
-            label: const Text('حفظ الأسئلة'),
+            child: Text(
+              strings.text('تأكيد', 'Done', 'Valider'),
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: cs.primary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 80),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      strings.text('إدارة الأسئلة', 'Manage questions', 'Gerer les questions'),
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  FilledButton.icon(
+                    onPressed: _addQuestion,
+                    icon: const Icon(Icons.add),
+                    label: Text(strings.text('سؤال', 'Question', 'Question')),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ..._drafts.asMap().entries.map((entry) {
+            return _AssignmentQuestionCard(
+              index: entry.key,
+              question: entry.value,
+              onRemove: () => _removeQuestion(entry.key),
+            );
+          }),
+        ],
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        child: FilledButton.icon(
+          onPressed: _confirm,
+          icon: const Icon(Icons.check_rounded),
+          label: Text(strings.text('حفظ الأسئلة', 'Save questions', 'Enregistrer les questions')),
         ),
       ),
     );
@@ -157,10 +168,11 @@ class _AssignmentQuestionCard extends StatefulWidget {
 class _AssignmentQuestionCardState extends State<_AssignmentQuestionCard> {
   @override
   Widget build(BuildContext context) {
-    final q = widget.question;
-    final isMcq = q.type == 'mcq';
-    final isMultiSelect = q.type == 'multi_select';
-    final isNumber = q.type == 'number';
+    final strings = AppStrings.of(context);
+    final question = widget.question;
+    final isMcq = question.type == 'mcq';
+    final isMultiSelect = question.type == 'multi_select';
+    final isNumber = question.type == 'number';
 
     return Card(
       margin: const EdgeInsets.only(top: 10),
@@ -170,38 +182,42 @@ class _AssignmentQuestionCardState extends State<_AssignmentQuestionCard> {
           children: [
             Row(
               children: [
-                Expanded(child: Text('السؤال ${widget.index + 1}')),
+                Expanded(
+                  child: Text(
+                    '${strings.text('السؤال', 'Question', 'Question')} ${widget.index + 1}',
+                  ),
+                ),
                 DropdownButton<String>(
-                  value: q.type,
-                  items: const [
+                  value: question.type,
+                  items: [
                     DropdownMenuItem(
                       value: 'mcq',
-                      child: Text('اختيار من متعدد'),
+                      child: Text(strings.text('اختيار من متعدد', 'Multiple choice', 'Choix multiple')),
                     ),
                     DropdownMenuItem(
                       value: 'multi_select',
-                      child: Text('تعدد الاختيارات'),
+                      child: Text(strings.text('تعدد الاختيارات', 'Multi-select', 'Selection multiple')),
                     ),
                     DropdownMenuItem(
                       value: 'true_false',
-                      child: Text('صح / خطأ'),
+                      child: Text(strings.text('صح / خطأ', 'True / False', 'Vrai / Faux')),
                     ),
                     DropdownMenuItem(
                       value: 'short_text',
-                      child: Text('إجابة قصيرة'),
+                      child: Text(strings.text('إجابة قصيرة', 'Short answer', 'Reponse courte')),
                     ),
                     DropdownMenuItem(
                       value: 'paragraph',
-                      child: Text('فقرة'),
+                      child: Text(strings.text('فقرة', 'Paragraph', 'Paragraphe')),
                     ),
                     DropdownMenuItem(
                       value: 'number',
-                      child: Text('رقم'),
+                      child: Text(strings.text('رقم', 'Number', 'Nombre')),
                     ),
                   ],
-                  onChanged: (v) {
-                    if (v == null) return;
-                    setState(() => q.type = v);
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => question.type = value);
                   },
                 ),
                 IconButton(
@@ -211,8 +227,10 @@ class _AssignmentQuestionCardState extends State<_AssignmentQuestionCard> {
               ],
             ),
             TextField(
-              controller: q.promptController,
-              decoration: const InputDecoration(labelText: 'نص السؤال'),
+              controller: question.promptController,
+              decoration: InputDecoration(
+                labelText: strings.text('نص السؤال', 'Question text', 'Texte de la question'),
+              ),
             ),
             if (isNumber) ...[
               const SizedBox(height: 10),
@@ -220,26 +238,34 @@ class _AssignmentQuestionCardState extends State<_AssignmentQuestionCard> {
                 children: [
                   Expanded(
                     child: TextField(
-                      controller: q.minNumberController,
+                      controller: question.minNumberController,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                         signed: false,
                       ),
-                      decoration: const InputDecoration(
-                        labelText: 'أدنى قيمة (اختياري)',
+                      decoration: InputDecoration(
+                        labelText: strings.text(
+                          'أدنى قيمة (اختياري)',
+                          'Minimum value (optional)',
+                          'Valeur minimale (optionnel)',
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: TextField(
-                      controller: q.maxNumberController,
+                      controller: question.maxNumberController,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                         signed: false,
                       ),
-                      decoration: const InputDecoration(
-                        labelText: 'أقصى قيمة (اختياري)',
+                      decoration: InputDecoration(
+                        labelText: strings.text(
+                          'أقصى قيمة (اختياري)',
+                          'Maximum value (optional)',
+                          'Valeur maximale (optionnel)',
+                        ),
                       ),
                     ),
                   ),
@@ -247,33 +273,34 @@ class _AssignmentQuestionCardState extends State<_AssignmentQuestionCard> {
               ),
               const SizedBox(height: 6),
               SwitchListTile(
-                value: q.allowDecimal,
-                onChanged: (v) => setState(() => q.allowDecimal = v),
+                value: question.allowDecimal,
+                onChanged: (value) => setState(() => question.allowDecimal = value),
                 contentPadding: EdgeInsets.zero,
-                title: const Text('السماح بالكسور'),
+                title: Text(
+                  strings.text('السماح بالكسور', 'Allow decimals', 'Autoriser les decimales'),
+                ),
               ),
             ],
             if (isMcq || isMultiSelect) ...[
               const SizedBox(height: 8),
-              ...q.optionsControllers.asMap().entries.map((entry) {
-                final index = entry.key;
-                final controller = entry.value;
+              ...question.optionsControllers.asMap().entries.map((entry) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
                     children: [
                       Expanded(
                         child: TextField(
-                          controller: controller,
+                          controller: entry.value,
                           decoration: InputDecoration(
-                            labelText: 'خيار ${index + 1}',
+                            labelText:
+                                '${strings.text('خيار', 'Option', 'Option')} ${entry.key + 1}',
                           ),
                         ),
                       ),
-                      if (q.optionsControllers.length > 2)
+                      if (question.optionsControllers.length > 2)
                         IconButton(
                           onPressed: () => setState(
-                            () => q.optionsControllers.removeAt(index),
+                            () => question.optionsControllers.removeAt(entry.key),
                           ),
                           icon: const Icon(Icons.remove_circle_outline),
                         ),
@@ -285,10 +312,12 @@ class _AssignmentQuestionCardState extends State<_AssignmentQuestionCard> {
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
                   onPressed: () => setState(
-                    () => q.optionsControllers.add(TextEditingController()),
+                    () => question.optionsControllers.add(TextEditingController()),
                   ),
                   icon: const Icon(Icons.add),
-                  label: const Text('إضافة خيار'),
+                  label: Text(
+                    strings.text('إضافة خيار', 'Add option', 'Ajouter une option'),
+                  ),
                 ),
               ),
             ],
@@ -320,7 +349,7 @@ class _QuestionDraft {
         promptController = TextEditingController(text: prompt ?? ''),
         optionsControllers = (options == null || options.isEmpty)
             ? [TextEditingController(), TextEditingController()]
-            : options.map((o) => TextEditingController(text: o)).toList(),
+            : options.map((option) => TextEditingController(text: option)).toList(),
         minNumberController = TextEditingController(text: minNumber ?? ''),
         maxNumberController = TextEditingController(text: maxNumber ?? ''),
         allowDecimal = allowDecimal ?? true;
@@ -331,13 +360,14 @@ class _QuestionDraft {
     final id = (json['id'] ?? '').toString();
     final rawOptions = json['options'];
     final options = rawOptions is List
-        ? rawOptions.map((e) => e.toString()).toList()
+        ? rawOptions.map((item) => item.toString()).toList()
         : const <String>[];
     final minNumber = (json['min'] ?? '').toString();
     final maxNumber = (json['max'] ?? '').toString();
     final allowDecimal = json['allow_decimal'] is bool
         ? (json['allow_decimal'] as bool)
         : true;
+
     return _QuestionDraft(
       type: type,
       id: id.isEmpty ? null : id,
@@ -361,8 +391,8 @@ class _QuestionDraft {
 
     if (type == 'mcq' || type == 'multi_select') {
       final options = optionsControllers
-          .map((c) => c.text.trim())
-          .where((v) => v.isNotEmpty)
+          .map((controller) => controller.text.trim())
+          .where((value) => value.isNotEmpty)
           .toList();
       if (options.length < 2) return null;
       map['options'] = options;
@@ -394,8 +424,8 @@ class _QuestionDraft {
 
   void dispose() {
     promptController.dispose();
-    for (final c in optionsControllers) {
-      c.dispose();
+    for (final controller in optionsControllers) {
+      controller.dispose();
     }
     minNumberController.dispose();
     maxNumberController.dispose();

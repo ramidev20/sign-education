@@ -1,7 +1,8 @@
+import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_classes.dart';
 import 'package:sign_education/data/models/user_model.dart';
-import 'package:flex_color_picker/flex_color_picker.dart';
+import 'package:sign_education/utils/app_strings.dart';
 
 class NewGroupPage extends StatefulWidget {
   final UserModel teacher;
@@ -14,7 +15,6 @@ class NewGroupPage extends StatefulWidget {
 
 class _NewGroupPageState extends State<NewGroupPage> {
   final _formKey = GlobalKey<FormState>();
-
   final nameCtrl = TextEditingController();
   final levelCtrl = TextEditingController();
   final branchCtrl = TextEditingController();
@@ -23,23 +23,23 @@ class _NewGroupPageState extends State<NewGroupPage> {
   Color _avatarColor = Colors.blueGrey;
 
   final List<String> _subjects = [
-    "رياضيات",
-    "فيزياء",
-    "كيمياء",
-    "أحياء",
-    "تاريخ",
-    "جغرافيا",
-    "علوم الحاسوب",
-    "إنجليزية",
-    "أخرى",
+    'رياضيات',
+    'فيزياء',
+    'كيمياء',
+    'أحياء',
+    'تاريخ',
+    'جغرافيا',
+    'علوم الحاسوب',
+    'إنجليزية',
+    'أخرى',
   ];
 
-  /// Show the FlexColorPicker dialog
   Future<void> _pickColor() async {
-    final Color pickedColor = await showColorPickerDialog(
+    final strings = AppStrings.of(context);
+    final pickedColor = await showColorPickerDialog(
       context,
       _avatarColor,
-      title: const Text("اختر لونًا"),
+      title: Text(strings.text('اختر لونًا', 'Choose a color', 'Choisir une couleur')),
       width: 60,
       height: 60,
       spacing: 5,
@@ -52,17 +52,11 @@ class _NewGroupPageState extends State<NewGroupPage> {
       },
     );
 
-    if (pickedColor != null) {
-      setState(() => _avatarColor = pickedColor);
-    }
+    setState(() => _avatarColor = pickedColor);
   }
 
-  /// Create group and save to Supabase
   Future<void> _createGroup() async {
     if (!_formKey.currentState!.validate() || _selectedSubject == null) return;
-
-    final classGroupId =
-        "${levelCtrl.text}_${branchCtrl.text}_$_selectedSubject";
 
     final hexColor =
         '#${_avatarColor.value.toRadixString(16).substring(2).toUpperCase()}';
@@ -82,65 +76,73 @@ class _NewGroupPageState extends State<NewGroupPage> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text("مجموعة جديدة")),
+      appBar: AppBar(
+        title: Text(strings.text('مجموعة جديدة', 'New group', 'Nouveau groupe')),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: ListView(
             children: [
-              /// Group Name
               TextFormField(
                 controller: nameCtrl,
-                decoration: const InputDecoration(labelText: "اسم المجموعة"),
-                validator: (v) =>
-                    v == null || v.isEmpty ? "أدخل اسم المجموعة" : null,
+                decoration: InputDecoration(
+                  labelText: strings.text('اسم المجموعة', 'Group name', 'Nom du groupe'),
+                ),
+                validator: (v) => v == null || v.isEmpty
+                    ? strings.text('أدخل اسم المجموعة', 'Enter the group name', 'Entrez le nom du groupe')
+                    : null,
               ),
               const SizedBox(height: 12),
-
-              /// Level + Branch in one row
               Row(
                 children: [
                   Expanded(
                     child: TextFormField(
                       controller: levelCtrl,
-                      decoration: const InputDecoration(labelText: "المستوى"),
-                      validator: (v) =>
-                          v == null || v.isEmpty ? "أدخل المستوى" : null,
+                      decoration: InputDecoration(
+                        labelText: strings.text('المستوى', 'Level', 'Niveau'),
+                      ),
+                      validator: (v) => v == null || v.isEmpty
+                          ? strings.text('أدخل المستوى', 'Enter the level', 'Entrez le niveau')
+                          : null,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextFormField(
                       controller: branchCtrl,
-                      decoration: const InputDecoration(labelText: "الشعبة"),
-                      validator: (v) =>
-                          v == null || v.isEmpty ? "أدخل الشعبة" : null,
+                      decoration: InputDecoration(labelText: strings.branch),
+                      validator: (v) => v == null || v.isEmpty
+                          ? strings.text('أدخل الشعبة', 'Enter the branch', 'Entrez la filiere')
+                          : null,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-
-              /// Subject dropdown
               DropdownButtonFormField<String>(
                 initialValue: _selectedSubject,
-                decoration: const InputDecoration(labelText: "المادة"),
+                decoration: InputDecoration(
+                  labelText: strings.text('المادة', 'Subject', 'Matiere'),
+                ),
                 items: _subjects
                     .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                     .toList(),
                 onChanged: (val) => setState(() => _selectedSubject = val),
-                validator: (v) => v == null ? "الرجاء اختيار مادة" : null,
+                validator: (v) => v == null
+                    ? strings.text('الرجاء اختيار مادة', 'Please choose a subject', 'Veuillez choisir une matiere')
+                    : null,
               ),
               const SizedBox(height: 12),
-
-              /// Color picker row
               Row(
                 children: [
-                  const Text(
-                    "لون الرمز:",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  Text(
+                    strings.text('لون الرمز:', 'Badge color:', 'Couleur du badge :'),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(width: 12),
                   IconButton(
@@ -150,12 +152,12 @@ class _NewGroupPageState extends State<NewGroupPage> {
                 ],
               ),
               const SizedBox(height: 24),
-
-              /// Create group button
               ElevatedButton.icon(
                 onPressed: _createGroup,
                 icon: const Icon(Icons.check),
-                label: const Text("إنشاء المجموعة"),
+                label: Text(
+                  strings.text('إنشاء المجموعة', 'Create group', 'Creer le groupe'),
+                ),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),
                 ),

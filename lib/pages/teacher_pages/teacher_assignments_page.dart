@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:sign_education/data/models/user_model.dart';
-import 'package:sign_education/data/models/assignment_model.dart';
 import 'package:sign_education/data/db/db_helper_assigments.dart';
-import 'package:sign_education/data/labels_data.dart';
+import 'package:sign_education/data/models/assignment_model.dart';
+import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/pages/teacher_pages/assigment_add.dart';
 import 'package:sign_education/pages/teacher_pages/assignment_deliveries_page.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:sign_education/utils/app_theme.dart';
 
 class TeacherAssignmentsPage extends StatefulWidget {
@@ -28,13 +28,6 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
   String _subjectFilter = 'all';
   String _sortKey = 'due_desc';
 
-  static const Map<String, String> statusLabels = {
-    'pending': 'مستمر',
-    'active': 'مستمر',
-    'completed': 'مكتمل',
-    'archived': 'مؤرشف',
-  };
-
   @override
   void initState() {
     super.initState();
@@ -45,6 +38,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     final assignments = await DbHelperAssignments.getAssignmentsByTeacher(
       widget.user.id,
     );
+    if (!mounted) return;
     setState(() {
       currentAssignments = assignments
           .where((a) => a.status != 'archived' && a.status != 'completed')
@@ -62,6 +56,53 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     final hh = dt.hour.toString().padLeft(2, '0');
     final mm = dt.minute.toString().padLeft(2, '0');
     return '$y-$m-$d $hh:$mm';
+  }
+
+  String _subjectLabel(AppStrings strings, String subjectKey) {
+    switch (subjectKey) {
+      case 'math':
+        return strings.text('رياضيات', 'Mathematics', 'Mathematiques');
+      case 'physics':
+        return strings.text('فيزياء', 'Physics', 'Physique');
+      case 'chemistry':
+        return strings.text('كيمياء', 'Chemistry', 'Chimie');
+      case 'biology':
+      case 'natural_sciences':
+        return strings.text('علوم طبيعية', 'Natural sciences', 'Sciences naturelles');
+      case 'history':
+        return strings.text('تاريخ', 'History', 'Histoire');
+      case 'geography':
+        return strings.text('جغرافيا', 'Geography', 'Geographie');
+      case 'history_geography':
+        return strings.text('تاريخ وجغرافيا', 'History and geography', 'Histoire et geographie');
+      case 'philosophy':
+        return strings.text('فلسفة', 'Philosophy', 'Philosophie');
+      case 'languages':
+      case 'language':
+        return strings.text('لغات', 'Languages', 'Langues');
+      case 'arabic':
+        return strings.text('اللغة العربية', 'Arabic language', 'Langue arabe');
+      case 'english':
+        return strings.text('اللغة الإنجليزية', 'English language', 'Langue anglaise');
+      case 'french':
+        return strings.text('اللغة الفرنسية', 'French language', 'Langue francaise');
+      default:
+        return subjectKey;
+    }
+  }
+
+  String _statusLabel(AppStrings strings, String status) {
+    switch (status) {
+      case 'pending':
+      case 'active':
+        return strings.text('مستمر', 'Active', 'En cours');
+      case 'completed':
+        return strings.text('مكتمل', 'Completed', 'Termine');
+      case 'archived':
+        return strings.text('مؤرشف', 'Archived', 'Archive');
+      default:
+        return status;
+    }
   }
 
   List<AssignmentModel> _applyFilters(List<AssignmentModel> input) {
@@ -88,7 +129,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     return list;
   }
 
-  Widget _filtersBar() {
+  Widget _filtersBar(AppStrings strings) {
     final allSubjects = <String>{
       ...currentAssignments.map((a) => a.subject),
       ...archivedAssignments.map((a) => a.subject),
@@ -102,16 +143,19 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
           Expanded(
             child: DropdownButtonFormField<String>(
               value: _subjectFilter,
-              decoration: const InputDecoration(
-                labelText: 'المادة',
+              decoration: InputDecoration(
+                labelText: strings.text('المادة', 'Subject', 'Matiere'),
                 isDense: true,
               ),
               items: [
-                const DropdownMenuItem(value: 'all', child: Text('الكل')),
+                DropdownMenuItem(
+                  value: 'all',
+                  child: Text(strings.text('الكل', 'All', 'Tous')),
+                ),
                 ...allSubjects.map(
                   (s) => DropdownMenuItem(
                     value: s,
-                    child: Text(subjectLabels[s] ?? s),
+                    child: Text(_subjectLabel(strings, s)),
                   ),
                 ),
               ],
@@ -125,20 +169,38 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
           Expanded(
             child: DropdownButtonFormField<String>(
               value: _sortKey,
-              decoration: const InputDecoration(
-                labelText: 'الترتيب',
+              decoration: InputDecoration(
+                labelText: strings.text('الترتيب', 'Sort', 'Tri'),
                 isDense: true,
               ),
-              items: const [
-                DropdownMenuItem(value: 'due_desc', child: Text('الأقرب موعدا')),
-                DropdownMenuItem(value: 'due_asc', child: Text('الأبعد موعدا')),
+              items: [
+                DropdownMenuItem(
+                  value: 'due_desc',
+                  child: Text(
+                    strings.text(
+                      'الأقرب موعدا',
+                      'Nearest due date',
+                      'Echeance la plus proche',
+                    ),
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: 'due_asc',
+                  child: Text(
+                    strings.text(
+                      'الأبعد موعدا',
+                      'Latest due date',
+                      'Echeance la plus lointaine',
+                    ),
+                  ),
+                ),
                 DropdownMenuItem(
                   value: 'created_desc',
-                  child: Text('الأحدث إضافة'),
+                  child: Text(strings.text('الأحدث إضافة', 'Newest first', 'Plus recent')),
                 ),
                 DropdownMenuItem(
                   value: 'created_asc',
-                  child: Text('الأقدم إضافة'),
+                  child: Text(strings.text('الأقدم إضافة', 'Oldest first', 'Plus ancien')),
                 ),
               ],
               onChanged: (v) {
@@ -154,7 +216,9 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final initialIndex = widget.initialTabIndex.clamp(0, 2).toInt();
+
     return DefaultTabController(
       length: 3,
       initialIndex: initialIndex,
@@ -167,13 +231,27 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
                 Container(
                   color: Theme.of(
                     context,
-                  ).colorScheme.primary.withOpacity(0.05),
-                  child: const TabBar(
+                  ).colorScheme.primary.withValues(alpha: 0.05),
+                  child: TabBar(
                     dividerColor: Colors.transparent,
                     tabs: [
-                      Tab(text: 'إدارة الواجبات'),
-                      Tab(text: 'التسليمات'),
-                      Tab(text: 'الأرشيف'),
+                      Tab(
+                        text: strings.text(
+                          'إدارة الواجبات',
+                          'Assignments',
+                          'Devoirs',
+                        ),
+                      ),
+                      Tab(
+                        text: strings.text(
+                          'التسليمات',
+                          'Deliveries',
+                          'Remises',
+                        ),
+                      ),
+                      Tab(
+                        text: strings.text('الأرشيف', 'Archive', 'Archives'),
+                      ),
                     ],
                   ),
                 ),
@@ -200,8 +278,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
                           final added = await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  AssignmentAddPage(user: widget.user),
+                              builder: (_) => AssignmentAddPage(user: widget.user),
                             ),
                           );
                           if (added == true) fetchAssignments();
@@ -218,134 +295,156 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
   }
 
   Widget _buildActiveAssignmentsTab() {
+    final strings = AppStrings.of(context);
     final list = _applyFilters(currentAssignments);
+
     return ListView(
       padding: const EdgeInsets.only(bottom: 16),
       children: [
-        _filtersBar(),
-        ...list.map((a) {
-      final title = (a.title ?? '').trim().isEmpty ? 'واجب' : a.title!.trim();
-      final qCount =
-          ((a.assignmentContentJson?['questions'] as List?) ?? const []).length;
-      final due = _fmtDateTime(a.completeAt);
+        _filtersBar(strings),
+        ...list.map((assignment) {
+          final title = (assignment.title ?? '').trim().isEmpty
+              ? strings.text('واجب', 'Assignment', 'Devoir')
+              : assignment.title!.trim();
+          final qCount =
+              ((assignment.assignmentContentJson?['questions'] as List?) ?? const [])
+                  .length;
+          final due = _fmtDateTime(assignment.completeAt);
 
-      return Card(
-        margin: const EdgeInsets.only(bottom: 12),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Chip(label: Text('المادة: ${subjectLabels[a.subject]}')),
-                  Chip(label: Text('عدد الأسئلة: $qCount')),
-                  Chip(label: Text('التسليم: $due')),
-                  Chip(
-                    label: Text(
-                      'الحالة: ${statusLabels[a.status] ?? a.status}',
-                    ),
+                  Text(
+                    title,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.preview_outlined),
-                      label: const Text('التسليمات'),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => AssignmentDeliveriesPage(
-                              assignmentId: a.assignmentId!,
-                              title: a.title ?? '',
-                            ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      Chip(
+                        label: Text(
+                          '${strings.text('المادة', 'Subject', 'Matiere')}: ${_subjectLabel(strings, assignment.subject)}',
+                        ),
+                      ),
+                      Chip(
+                        label: Text(
+                          '${strings.text('عدد الأسئلة', 'Questions', 'Questions')}: $qCount',
+                        ),
+                      ),
+                      Chip(
+                        label: Text(
+                          '${strings.text('التسليم', 'Due', 'Echeance')}: $due',
+                        ),
+                      ),
+                      Chip(
+                        label: Text(
+                          '${strings.text('الحالة', 'Status', 'Statut')}: ${_statusLabel(strings, assignment.status)}',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.preview_outlined),
+                          label: Text(
+                            strings.text('التسليمات', 'Deliveries', 'Remises'),
                           ),
-                        );
-                      },
-                    ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => AssignmentDeliveriesPage(
+                                  assignmentId: assignment.assignmentId!,
+                                  title: assignment.title ?? '',
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-      );
-    }).toList(),
+            ),
+          );
+        }),
       ],
     );
   }
 
   Widget _buildDeliveriesTab() {
+    final strings = AppStrings.of(context);
     final list = _applyFilters(currentAssignments);
+
     return ListView(
       padding: const EdgeInsets.only(bottom: 16),
       children: [
-        _filtersBar(),
+        _filtersBar(strings),
         ...list.map((assignment) {
-      final qCount =
-          ((assignment.assignmentContentJson?['questions'] as List?) ??
-                  const [])
-              .length;
-      return Card(
-        child: ListTile(
-          title: Text(assignment.title ?? ''),
-          subtitle: Text(
-            "عدد التسليمات: ${assignment.submissionsCount ?? 0} • عدد الأسئلة: $qCount",
-          ),
-          leading: CircleAvatar(
-            backgroundColor: Theme.of(context)
-                .colorScheme
-                .primaryContainer
-                .withValues(alpha: 0.9),
-            child: const Icon(Icons.assignment_turned_in_outlined),
-          ),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AssignmentDeliveriesPage(
-                  assignmentId: assignment.assignmentId!,
-                  title: assignment.title ?? '',
-                ),
+          final qCount =
+              ((assignment.assignmentContentJson?['questions'] as List?) ?? const [])
+                  .length;
+
+          return Card(
+            child: ListTile(
+              title: Text(assignment.title ?? ''),
+              subtitle: Text(
+                '${strings.text('عدد التسليمات', 'Submissions', 'Remises')}: ${assignment.submissionsCount ?? 0} • ${strings.text('عدد الأسئلة', 'Questions', 'Questions')}: $qCount',
               ),
-            );
-          },
-        ),
-      );
-    }).toList(),
+              leading: CircleAvatar(
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.primaryContainer.withValues(alpha: 0.9),
+                child: const Icon(Icons.assignment_turned_in_outlined),
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AssignmentDeliveriesPage(
+                      assignmentId: assignment.assignmentId!,
+                      title: assignment.title ?? '',
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        }),
       ],
     );
   }
 
   Widget _buildArchiveTab() {
+    final strings = AppStrings.of(context);
     final list = _applyFilters(archivedAssignments);
+
     return ListView(
       padding: const EdgeInsets.only(bottom: 16),
       children: [
-        _filtersBar(),
-        ...list.map((a) {
-      return Card(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(16),
-          title: Text(a.title ?? ''),
-          subtitle: Text(statusLabels[a.status] ?? 'مؤرشف'),
-        ),
-      );
-    }).toList(),
+        _filtersBar(strings),
+        ...list.map((assignment) {
+          return Card(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: ListTile(
+              contentPadding: const EdgeInsets.all(16),
+              title: Text(assignment.title ?? ''),
+              subtitle: Text(_statusLabel(strings, assignment.status)),
+            ),
+          );
+        }),
       ],
     );
   }

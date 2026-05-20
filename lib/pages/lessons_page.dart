@@ -8,6 +8,7 @@ import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/pages/lesson_create_page.dart';
 import 'package:sign_education/pages/lesson_strategies_info_page.dart';
 import 'package:sign_education/pages/lesson_view_page.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:sign_education/utils/app_theme.dart';
 import 'package:sign_education/utils/offline_lesson_cache.dart';
 import 'package:sign_education/widgets/app_state.dart';
@@ -67,7 +68,7 @@ class _LessonsPageState extends State<LessonsPage> {
         _loading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر تحميل الدروس عبر الإنترنت: $e')),
+        SnackBar(content: Text('${AppStrings.of(context).tr('lessons.load_failed_internet')}: $e')),
       );
     }
   }
@@ -114,7 +115,7 @@ class _LessonsPageState extends State<LessonsPage> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر تحميل الدروس: $e')),
+        SnackBar(content: Text('${AppStrings.of(context).tr('lessons.load_failed')}: $e')),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -133,15 +134,13 @@ class _LessonsPageState extends State<LessonsPage> {
   @override
   Widget build(BuildContext context) {
     final isTeacher = widget.user.role == 'teacher';
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('الدروس'),
-          centerTitle: true,
-        ),
-        body: isTeacher ? _buildTeacherView(context) : _buildStudentView(),
+    final strings = AppStrings.of(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(strings.tr('lessons.title')),
+        centerTitle: true,
       ),
+      body: isTeacher ? _buildTeacherView(context) : _buildStudentView(),
     );
   }
 
@@ -149,18 +148,22 @@ class _LessonsPageState extends State<LessonsPage> {
     if (_loading) return const AppLoading();
 
     if (!_studentOffline && _groupIds.isEmpty) {
-      return const AppEmptyState(
+      final strings = AppStrings.of(context);
+      return AppEmptyState(
         icon: Icons.school_outlined,
-        title: 'أنت لست مسجلاً في أي قسم بعد',
-        message: 'اطلب من المعلم إضافتك إلى مجموعة.',
+        title: strings.tr('lessons.student.no_group.title'),
+        message: strings.tr('lessons.student.no_group.message'),
       );
     }
 
     if (_lessons.isEmpty) {
+      final strings = AppStrings.of(context);
       return AppEmptyState(
         icon: Icons.menu_book_outlined,
-        title: _studentOffline ? 'لا توجد دروس محفوظة دون اتصال' : 'لا توجد دروس متاحة لك حالياً',
-        actionLabel: 'تحديث',
+        title: _studentOffline
+            ? strings.tr('lessons.student.empty_offline')
+            : strings.tr('lessons.student.empty_online'),
+        actionLabel: strings.tr('app.refresh'),
         onAction: _refreshStudent,
       );
     }
@@ -168,7 +171,7 @@ class _LessonsPageState extends State<LessonsPage> {
     if (_selectedStudentSubject == null) {
       final subjects = _allStudentSubjects(_lessons);
       final grid = _LessonsSubjectsGrid(
-        title: 'اختر المادة',
+        title: AppStrings.of(context).tr('lessons.choose_subject'),
         subjects: subjects,
         onTap: (subjectId) {
           setState(() => _selectedStudentSubject = subjectId);
@@ -207,10 +210,11 @@ class _LessonsPageState extends State<LessonsPage> {
   }
 
   Widget _buildTeacherView(BuildContext context) {
+    final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final tiles = <_TeacherTile>[
       _TeacherTile(
-        title: 'إضافة درس',
+        title: strings.tr('lessons.teacher.add_lesson'),
         icon: Icons.add_circle_outline,
         gradient: LinearGradient(
           colors: [theme.colorScheme.primary, theme.colorScheme.secondary],
@@ -225,7 +229,7 @@ class _LessonsPageState extends State<LessonsPage> {
         },
       ),
       _TeacherTile(
-        title: 'أرشيف الدروس',
+        title: strings.tr('lessons.teacher.archive'),
         icon: Icons.archive_outlined,
         onTap: () {
           Navigator.push(
@@ -235,7 +239,7 @@ class _LessonsPageState extends State<LessonsPage> {
         },
       ),
       _TeacherTile(
-        title: 'استراتيجيات التعلم',
+        title: strings.tr('lessons.teacher.strategy_guide'),
         icon: Icons.auto_awesome_outlined,
         gradient: LinearGradient(
           colors: [theme.colorScheme.primary, theme.colorScheme.secondary],
@@ -367,26 +371,27 @@ class _TeacherLessonsArchiveState extends State<_TeacherLessonsArchive> {
   }
 
   Future<void> _confirmDeleteLesson(LessonModel lesson) async {
+    final strings = AppStrings.of(context);
     final lessonId = lesson.lessonId;
     if (lessonId == null || lessonId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لا يمكن حذف هذا الدرس: المعرّف غير موجود')),
+        SnackBar(content: Text(strings.tr('lessons.delete.id_missing'))),
       );
       return;
     }
 
     final title = (lesson.title?.trim().isNotEmpty ?? false)
         ? lesson.title!.trim()
-        : 'هذا الدرس';
+        : strings.tr('lessons.delete.fallback_title');
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('حذف الدرس'),
-        content: Text('هل أنت متأكد أنك تريد حذف "$title" نهائيًا؟'),
+        title: Text(strings.tr('lessons.delete.title')),
+        content: Text('${strings.tr('lessons.delete.confirm')} "$title"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text(strings.tr('app.cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
@@ -394,7 +399,7 @@ class _TeacherLessonsArchiveState extends State<_TeacherLessonsArchive> {
               backgroundColor: Theme.of(context).colorScheme.error,
               foregroundColor: Theme.of(context).colorScheme.onError,
             ),
-            child: const Text('حذف'),
+            child: Text(strings.tr('lessons.delete.action')),
           ),
         ],
       ),
@@ -406,12 +411,12 @@ class _TeacherLessonsArchiveState extends State<_TeacherLessonsArchive> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('تم حذف الدرس بنجاح')));
+      ).showSnackBar(SnackBar(content: Text(strings.tr('lessons.delete.success'))));
       _retryLoad();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر حذف الدرس: $e')),
+        SnackBar(content: Text('${strings.tr('lessons.delete.failed')}: $e')),
       );
     }
   }
@@ -431,46 +436,51 @@ class _TeacherLessonsArchiveState extends State<_TeacherLessonsArchive> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(title: const Text('أرشيف الدروس')),
-        body: FutureBuilder<_ArchiveLessonsResult>(
-          future: _archiveFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const AppLoading();
-            }
-            if (snapshot.hasError) {
-              return AppErrorState(
-                title: 'تعذر تحميل الأرشيف',
-                message: snapshot.error?.toString(),
-                actionLabel: 'إعادة المحاولة',
-                onAction: _retryLoad,
-              );
-            }
+    final strings = AppStrings.of(context);
+    return Scaffold(
+      appBar: AppBar(title: Text(strings.tr('lessons.teacher.archive'))),
+      body: FutureBuilder<_ArchiveLessonsResult>(
+        future: _archiveFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const AppLoading();
+          }
+          if (snapshot.hasError) {
+            return AppErrorState(
+              title: strings.tr('lessons.archive.load_failed'),
+              message: snapshot.error?.toString(),
+              actionLabel: strings.tr('lessons.archive.retry'),
+              onAction: _retryLoad,
+            );
+          }
 
-            final result = snapshot.data!;
-            final lessons = result.lessons;
-            if (lessons.isEmpty) {
-              return const AppEmptyState(
-                icon: Icons.archive_outlined,
-                title: 'لا توجد دروس بعد',
-              );
-            }
+          final result = snapshot.data!;
+          final lessons = result.lessons;
+          if (lessons.isEmpty) {
+            return AppEmptyState(
+              icon: Icons.archive_outlined,
+              title: strings.tr('lessons.archive.empty'),
+            );
+          }
 
-            if (_selectedSubject == null) {
-              final subjects = _buildSubjectsFromLessons(lessons);
-              return _withOfflineBanner(result, _LessonsSubjectsGrid(
-                title: 'اختر المادة',
+          if (_selectedSubject == null) {
+            final subjects = _buildSubjectsFromLessons(lessons);
+            return _withOfflineBanner(
+              result,
+              _LessonsSubjectsGrid(
+                title: strings.tr('lessons.choose_subject'),
                 subjects: subjects,
-                onTap: (subjectId) => setState(() => _selectedSubject = subjectId),
-              ));
-            }
+                onTap: (subjectId) =>
+                    setState(() => _selectedSubject = subjectId),
+              ),
+            );
+          }
 
-            final selected = _selectedSubject!;
-            final filtered = lessons.where((l) => l.subject == selected).toList();
-            return _withOfflineBanner(result, _LessonsBySubjectList(
+          final selected = _selectedSubject!;
+          final filtered = lessons.where((l) => l.subject == selected).toList();
+          return _withOfflineBanner(
+            result,
+            _LessonsBySubjectList(
               subjectId: selected,
               lessons: filtered,
               onBackToSubjects: () => setState(() => _selectedSubject = null),
@@ -486,9 +496,9 @@ class _TeacherLessonsArchiveState extends State<_TeacherLessonsArchive> {
                 );
               },
               onDeleteLesson: _confirmDeleteLesson,
-            ));
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -517,6 +527,7 @@ class _OfflineArchiveBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final scheme = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
@@ -532,14 +543,14 @@ class _OfflineArchiveBanner extends StatelessWidget {
           Expanded(
             child: Text(
               errorText == null || errorText!.isEmpty
-                  ? 'Showing downloaded archive (offline mode).'
-                  : 'Could not load online archive. Showing downloaded lessons.',
+                  ? strings.tr('lessons.archive.offline_banner')
+                  : strings.tr('lessons.archive.offline_banner_error'),
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
           TextButton(
             onPressed: onRefreshOnline,
-            child: const Text('Retry online'),
+            child: Text(strings.tr('lessons.archive.retry_online')),
           ),
         ],
       ),
@@ -564,6 +575,7 @@ class _LessonsBySubjectList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     return Column(
       children: [
         Padding(
@@ -573,7 +585,7 @@ class _LessonsBySubjectList extends StatelessWidget {
               TextButton.icon(
                 onPressed: onBackToSubjects,
                 icon: const Icon(Icons.grid_view_rounded),
-                label: const Text('كل المواد'),
+                label: Text(strings.tr('lessons.all_subjects')),
               ),
               const Spacer(),
               Text(
@@ -585,9 +597,9 @@ class _LessonsBySubjectList extends StatelessWidget {
         ),
         Expanded(
           child: lessons.isEmpty
-              ? const AppEmptyState(
+              ? AppEmptyState(
                   icon: Icons.menu_book_outlined,
-                  title: 'لا توجد دروس لهذه المادة',
+                  title: strings.tr('lessons.subject.empty'),
                 )
               : ListView.separated(
                   padding: const EdgeInsets.all(12),
@@ -598,8 +610,10 @@ class _LessonsBySubjectList extends StatelessWidget {
                     return Card(
                       child: ListTile(
                         leading: const Icon(Icons.menu_book_outlined),
-                        title: Text(lesson.title ?? 'درس'),
-                        subtitle: Text('المادة: ${_subjectLabel(lesson.subject)}'),
+                        title: Text(lesson.title ?? strings.tr('lessons.lesson_fallback_title')),
+                        subtitle: Text(
+                          '${strings.tr('lessons.subject_label')}: ${_subjectLabel(lesson.subject)}',
+                        ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -607,7 +621,7 @@ class _LessonsBySubjectList extends StatelessWidget {
                             if (onDeleteLesson != null) ...[
                               const SizedBox(width: 4),
                               IconButton(
-                                tooltip: 'حذف الدرس',
+                                tooltip: strings.tr('lessons.delete.title'),
                                 onPressed: () => onDeleteLesson!(lesson),
                                 icon: const Icon(Icons.delete_outline_rounded),
                                 color: Theme.of(context).colorScheme.error,
@@ -640,9 +654,10 @@ class _LessonsSubjectsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (subjects.isEmpty) {
-      return const AppEmptyState(
+      final strings = AppStrings.of(context);
+      return AppEmptyState(
         icon: Icons.menu_book_outlined,
-        title: 'لا توجد مواد متاحة',
+        title: strings.tr('lessons.subjects.empty'),
       );
     }
 

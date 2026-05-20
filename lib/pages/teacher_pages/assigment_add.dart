@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_assigments.dart';
 import 'package:sign_education/data/db/db_helper_classes.dart';
-import 'package:sign_education/data/models/class_group_model.dart';
 import 'package:sign_education/data/models/assignment_model.dart';
+import 'package:sign_education/data/models/class_group_model.dart';
 import 'package:sign_education/data/models/user_model.dart';
-import 'package:sign_education/pages/teacher_pages/assignment_questions_editor_page.dart';
 import 'package:sign_education/pages/lesson_select_group_page.dart';
-
+import 'package:sign_education/pages/teacher_pages/assignment_questions_editor_page.dart';
+import 'package:sign_education/utils/app_strings.dart';
 
 class AssignmentAddPage extends StatefulWidget {
   final UserModel user;
+
   const AssignmentAddPage({super.key, required this.user});
 
   @override
@@ -25,30 +26,47 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
   DateTime? endTime;
   String? selectedGroupId;
   ClassGroupModel? _selectedGroup;
-
   List<Map<String, dynamic>> _questionsPayload = const [];
 
-  final List<Map<String, dynamic>> subjectsList = const [
-    {'name': "math", 'label': 'رياضيات'},
-    {'name': "physics", 'label': 'فيزياء'},
-    {'name': "chemistry", 'label': 'كيمياء'},
-    {'name': "natural_sciences", 'label': 'علوم طبيعية'},
-    {'name': "history_geography", 'label': 'تاريخ وجغرافيا'},
-    {'name': "philosophy", 'label': 'فلسفة'},
-    {'name': "languages", 'label': 'لغات'},
-  ];
+  AppStrings get _strings =>
+      AppStrings(Localizations.localeOf(context).languageCode);
 
-  @override
-  void initState() {
-    super.initState();
-    _questionsPayload = const [];
-  }
+  static const List<String> _subjectKeys = [
+    'math',
+    'physics',
+    'chemistry',
+    'natural_sciences',
+    'history_geography',
+    'philosophy',
+    'languages',
+  ];
 
   @override
   void dispose() {
     _titleController.dispose();
     _instructionsController.dispose();
     super.dispose();
+  }
+
+  String _subjectLabel(AppStrings strings, String subjectKey) {
+    switch (subjectKey) {
+      case 'math':
+        return strings.text('رياضيات', 'Mathematics', 'Mathematiques');
+      case 'physics':
+        return strings.text('فيزياء', 'Physics', 'Physique');
+      case 'chemistry':
+        return strings.text('كيمياء', 'Chemistry', 'Chimie');
+      case 'natural_sciences':
+        return strings.text('علوم طبيعية', 'Natural sciences', 'Sciences naturelles');
+      case 'history_geography':
+        return strings.text('تاريخ وجغرافيا', 'History and geography', 'Histoire et geographie');
+      case 'philosophy':
+        return strings.text('فلسفة', 'Philosophy', 'Philosophie');
+      case 'languages':
+        return strings.text('لغات', 'Languages', 'Langues');
+      default:
+        return subjectKey;
+    }
   }
 
   Future<void> _selectGroup() async {
@@ -90,11 +108,13 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
       lastDate: DateTime(2100),
     );
     if (date == null || !mounted) return;
+
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
     );
     if (time == null || !mounted) return;
+
     setState(() {
       endTime = DateTime(
         date.year,
@@ -107,24 +127,50 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
   }
 
   Future<void> _saveAssignment() async {
+    final strings = _strings;
     if (!_formKey.currentState!.validate()) return;
+
     if (endTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("يرجى تحديد موعد التسليم")),
+        SnackBar(
+          content: Text(
+            strings.text(
+              'يرجى تحديد موعد التسليم',
+              'Please choose a due date',
+              'Veuillez choisir une date limite',
+            ),
+          ),
+        ),
       );
       return;
     }
 
     if (selectedGroupId == null || selectedGroupId!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("اختر مجموعة واحدة على الأقل")),
+        SnackBar(
+          content: Text(
+            strings.text(
+              'اختر مجموعة واحدة على الأقل',
+              'Please select a group',
+              'Veuillez selectionner un groupe',
+            ),
+          ),
+        ),
       );
       return;
     }
 
     if (_questionsPayload.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("أضف سؤالاً واحداً على الأقل")),
+        SnackBar(
+          content: Text(
+            strings.text(
+              'أضف سؤالا واحدا على الأقل',
+              'Add at least one question',
+              'Ajoutez au moins une question',
+            ),
+          ),
+        ),
       );
       return;
     }
@@ -133,11 +179,19 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
       final groupStudents = await DbHelperClasses.getStudentsByGroup(
         selectedGroupId!,
       );
-      final selectedStudentIds = groupStudents.map((s) => s.id).toSet().toList();
+      final selectedStudentIds = groupStudents.map((student) => student.id).toSet().toList();
       if (selectedStudentIds.isEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("لا يوجد طلاب داخل هذه المجموعة")),
+          SnackBar(
+            content: Text(
+              strings.text(
+                'لا يوجد طلاب داخل هذه المجموعة',
+                'This group has no students',
+                'Ce groupe ne contient aucun eleve',
+              ),
+            ),
+          ),
         );
         return;
       }
@@ -148,7 +202,7 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
         classGroupId: selectedGroupId!,
         title: _titleController.text.trim(),
         description: _instructionsController.text.trim(),
-        status: "pending",
+        status: 'pending',
         createdAt: DateTime.now(),
         completeAt: endTime!,
         fileUrl: null,
@@ -165,22 +219,49 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("تم إنشاء الواجب الديناميكي ومشاركته")),
+        SnackBar(
+          content: Text(
+            strings.text(
+              'تم إنشاء الواجب ومشاركته',
+              'Assignment created and shared',
+              'Devoir cree et partage',
+            ),
+          ),
+        ),
       );
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("حدث خطأ أثناء إنشاء الواجب: $e")),
+        SnackBar(
+          content: Text(
+            strings.text(
+              'حدث خطأ أثناء إنشاء الواجب',
+              'An error occurred while creating the assignment',
+              'Une erreur est survenue lors de la creation du devoir',
+            ) +
+                ': $e',
+          ),
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
-      appBar: AppBar(title: const Text("إضافة واجب ديناميكي")),
+      appBar: AppBar(
+        title: Text(
+          strings.text(
+            'إضافة واجب',
+            'Add assignment',
+            'Ajouter un devoir',
+          ),
+        ),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -193,43 +274,77 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
                   children: [
                     TextFormField(
                       controller: _titleController,
-                      decoration: const InputDecoration(labelText: 'العنوان'),
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'العنوان مطلوب'
-                          : null,
+                      decoration: InputDecoration(
+                        labelText: strings.text('العنوان', 'Title', 'Titre'),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return strings.text(
+                            'العنوان مطلوب',
+                            'Title is required',
+                            'Le titre est requis',
+                          );
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(labelText: "المادة"),
-                      items: subjectsList
+                      decoration: InputDecoration(
+                        labelText: strings.text('المادة', 'Subject', 'Matiere'),
+                      ),
+                      items: _subjectKeys
                           .map(
-                            (s) => DropdownMenuItem<String>(
-                              value: s['name'] as String,
-                              child: Text(s['label'] as String),
+                            (subjectKey) => DropdownMenuItem<String>(
+                              value: subjectKey,
+                              child: Text(_subjectLabel(strings, subjectKey)),
                             ),
                           )
                           .toList(),
-                      onChanged: (v) => subject = v,
-                      validator: (v) => v == null ? "اختر مادة" : null,
+                      onChanged: (value) => subject = value,
+                      validator: (value) => value == null
+                          ? strings.text(
+                              'اختر مادة',
+                              'Select a subject',
+                              'Selectionnez une matiere',
+                            )
+                          : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _instructionsController,
-                      decoration: const InputDecoration(labelText: 'تعليمات الواجب'),
+                      decoration: InputDecoration(
+                        labelText: strings.text(
+                          'تعليمات الواجب',
+                          'Assignment instructions',
+                          'Consignes du devoir',
+                        ),
+                      ),
                       maxLines: 3,
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'أدخل تعليمات الواجب'
-                          : null,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return strings.text(
+                            'أدخل تعليمات الواجب',
+                            'Enter assignment instructions',
+                            'Saisissez les consignes du devoir',
+                          );
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 12),
                     ListTile(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      tileColor: cs.surfaceContainerHighest.withOpacity(0.5),
+                      tileColor: cs.surfaceContainerHighest.withValues(alpha: 0.5),
                       title: Text(
                         endTime == null
-                            ? 'اختر موعد التسليم'
+                            ? strings.text(
+                                'اختر موعد التسليم',
+                                'Choose due date',
+                                'Choisir la date limite',
+                              )
                             : '${endTime!.day}/${endTime!.month}/${endTime!.year} - '
                                 '${endTime!.hour}:${endTime!.minute.toString().padLeft(2, '0')}',
                       ),
@@ -247,9 +362,9 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "أسئلة الواجب",
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                    Text(
+                      strings.text('أسئلة الواجب', 'Assignment questions', 'Questions du devoir'),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 8),
                     Card(
@@ -258,11 +373,21 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
                         leading: const CircleAvatar(
                           child: Icon(Icons.quiz_outlined),
                         ),
-                        title: const Text('إدارة الأسئلة'),
+                        title: Text(
+                          strings.text(
+                            'إدارة الأسئلة',
+                            'Manage questions',
+                            'Gerer les questions',
+                          ),
+                        ),
                         subtitle: Text(
                           _questionsPayload.isEmpty
-                              ? 'لم تتم إضافة أسئلة بعد'
-                              : 'عدد الأسئلة: ${_questionsPayload.length}',
+                              ? strings.text(
+                                  'لم تتم إضافة أسئلة بعد',
+                                  'No questions added yet',
+                                  'Aucune question ajoutee pour le moment',
+                                )
+                              : '${strings.text('عدد الأسئلة', 'Questions', 'Questions')}: ${_questionsPayload.length}',
                         ),
                         trailing: const Icon(Icons.chevron_left_rounded),
                         onTap: _editQuestions,
@@ -279,7 +404,10 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("اختر المجموعة", style: TextStyle(fontWeight: FontWeight.w700)),
+                    Text(
+                      strings.text('اختر المجموعة', 'Select group', 'Selectionner le groupe'),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                     const SizedBox(height: 8),
                     Card(
                       margin: EdgeInsets.zero,
@@ -287,9 +415,22 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
                         leading: const CircleAvatar(
                           child: Icon(Icons.group),
                         ),
-                        title: Text(_selectedGroup?.name ?? 'اضغط لاختيار المجموعة'),
+                        title: Text(
+                          _selectedGroup?.name ??
+                              strings.text(
+                                'اضغط لاختيار المجموعة',
+                                'Tap to choose a group',
+                                'Touchez pour choisir un groupe',
+                              ),
+                        ),
                         subtitle: _selectedGroup == null
-                            ? const Text('سيتم اختيار المجموعة في صفحة منفصلة.')
+                            ? Text(
+                                strings.text(
+                                  'سيتم اختيار المجموعة في صفحة منفصلة.',
+                                  'The group will be selected on a separate page.',
+                                  'Le groupe sera selectionne sur une page separee.',
+                                ),
+                              )
                             : Text(
                                 '${_selectedGroup!.level} • ${_selectedGroup!.subject}',
                               ),
@@ -305,7 +446,13 @@ class _AssignmentAddPageState extends State<AssignmentAddPage> {
             FilledButton.icon(
               onPressed: _saveAssignment,
               icon: const Icon(Icons.save_outlined),
-              label: const Text('حفظ ومشاركة الواجب'),
+              label: Text(
+                strings.text(
+                  'حفظ ومشاركة الواجب',
+                  'Save and share assignment',
+                  'Enregistrer et partager le devoir',
+                ),
+              ),
             ),
           ],
         ),
