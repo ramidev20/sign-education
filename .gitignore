@@ -50,3 +50,10 @@ app.*.map.json
 # Flutter platform "ephemeral" folders can contain large engine binaries (e.g. Windows .pdb)
 **/flutter/ephemeral/
 **/Flutter/ephemeral/
+
+# Local notes / generated audit artifacts
+/emails
+/localization_audit_*.txt
+/_keys_*.txt
+/_tr_keys_used*.txt
+/_missing_in_en.txt

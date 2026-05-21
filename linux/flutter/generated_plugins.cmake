@@ -4,9 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   gtk
-  printing
   sentry_flutter
-  syncfusion_pdfviewer_linux
   url_launcher_linux
 )
 
