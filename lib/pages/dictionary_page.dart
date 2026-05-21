@@ -29,9 +29,10 @@ class DictionaryPage extends StatelessWidget {
           ),
           itemBuilder: (context, index) {
             final subject = dictionarySubjects[index];
+            final title = strings.tr(subject.titleKey);
 
             return _SubjectTile(
-              title: subject.titleAr,
+              title: title,
               icon: subject.icon,
               color: subject.color,
               onTap: () {
@@ -40,7 +41,7 @@ class DictionaryPage extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (_) => DictionarySubjectWordsPage(
                       subjectId: subject.id,
-                      subjectTitleAr: subject.titleAr,
+                      subjectTitle: title,
                       subjectColor: subject.color,
                     ),
                   ),

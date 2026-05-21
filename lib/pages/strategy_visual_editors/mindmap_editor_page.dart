@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_lesson_strategies.dart';
 import 'package:sign_education/data/models/lesson_strategy_model.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:uuid/uuid.dart';
 
 class MindMapEditorPage extends StatefulWidget {
@@ -260,7 +261,9 @@ class _MindMapEditorPageState extends State<MindMapEditorPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('تعديل النص'),
+        title: Text(
+          AppStrings.read(context).tr('strategy_visual.mindmap.edit_text'),
+        ),
           content: TextField(
             controller: controller,
             autofocus: true,
@@ -344,7 +347,11 @@ class _MindMapEditorPageState extends State<MindMapEditorPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر الحفظ: $e')),
+        SnackBar(
+          content: Text(
+            '${AppStrings.read(context).tr('strategy_visual.save_failed')}: $e',
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -355,16 +362,17 @@ class _MindMapEditorPageState extends State<MindMapEditorPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final strings = AppStrings.of(context);
 
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: strings.isArabic ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('محرّر الخريطة الذهنية'),
+          title: Text(strings.tr('strategy_visual.mindmap.title')),
           centerTitle: true,
           actions: [
             IconButton(
-              tooltip: 'ترتيب تلقائي',
+              tooltip: strings.tr('strategy_visual.mindmap.auto_layout'),
               onPressed: () {
                 _autoLayoutTree();
                 setState(() {});
@@ -375,7 +383,7 @@ class _MindMapEditorPageState extends State<MindMapEditorPage> {
               icon: const Icon(Icons.auto_fix_high_outlined),
             ),
             IconButton(
-              tooltip: 'حفظ',
+              tooltip: strings.tr('strategy_visual.save'),
               onPressed: _saving ? null : _save,
               icon: _saving
                   ? const SizedBox(
@@ -476,8 +484,8 @@ class _MindMapEditorPageState extends State<MindMapEditorPage> {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: cs.outlineVariant),
                 ),
-                child: const Text(
-                  'الخريطة تُرتَّب تلقائياً من الأعلى إلى الأسفل. اضغط مرتين لتعديل النص، (+) لإضافة طفل، واسحب "ربط" لإعادة ربط الفرع.',
+                child: Text(
+                  strings.tr('strategy_visual.mindmap.help'),
                   textAlign: TextAlign.center,
                 ),
               ),

@@ -139,7 +139,7 @@ class _LessonViewPageState extends State<LessonViewPage> {
   }
 
   Future<void> _deleteStrategy(LessonStrategyModel strategy) async {
-    final strings = AppStrings.of(context);
+    final strings = AppStrings.read(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -166,7 +166,7 @@ class _LessonViewPageState extends State<LessonViewPage> {
   }
 
   Future<void> _saveLessonOffline() async {
-    final strings = AppStrings.of(context);
+    final strings = AppStrings.read(context);
     final lessonId = _lesson.lessonId;
     if (lessonId == null || lessonId.isEmpty) return;
 
@@ -205,7 +205,7 @@ class _LessonViewPageState extends State<LessonViewPage> {
   }
 
   Future<void> _removeLessonOffline() async {
-    final strings = AppStrings.of(context);
+    final strings = AppStrings.read(context);
     final lessonId = _lesson.lessonId;
     if (lessonId == null || lessonId.isEmpty) return;
 
@@ -332,7 +332,7 @@ class _LessonViewPageState extends State<LessonViewPage> {
                         final tileCount = strategies.length;
 
                         if (tileCount == 0) {
-                          return const Center(
+                          return Center(
                             child: Text(
                               strings.tr('lesson_view.strategies.empty'),
                             ),
@@ -480,7 +480,8 @@ class _LessonViewPageState extends State<LessonViewPage> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        _lesson.title ?? 'درس',
+                                        _lesson.title ??
+                                            strings.tr('lessons.lesson_fallback_title'),
                                         style: Theme.of(context)
                                             .textTheme
                                             .titleMedium
@@ -490,34 +491,54 @@ class _LessonViewPageState extends State<LessonViewPage> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        'إدارة ملف الدرس والاستراتيجيات من مكان واحد.',
+                                        strings.tr('lesson_view.teacher_card.subtitle'),
                                         style: Theme.of(
                                           context,
                                         ).textTheme.bodySmall,
                                       ),
                                       const SizedBox(height: 12),
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: FilledButton.icon(
-                                              onPressed: _addStrategy,
+                                      LayoutBuilder(
+                                        builder: (context, constraints) {
+                                          final isNarrow = constraints.maxWidth < 420;
+                                          final addBtn = FilledButton.icon(
+                                            onPressed: _addStrategy,
+                                            icon: const Icon(Icons.add_rounded),
+                                            label: Text(
+                                              strings.tr(
+                                                'lesson_view.teacher_card.add_strategy',
+                                              ),
+                                            ),
+                                          );
+                                          final editBtn = OutlinedButton.icon(
+                                            onPressed: _editLesson,
+                                            icon: const Icon(Icons.edit_outlined),
+                                            label: Text(
+                                              strings.tr(
+                                                'lesson_view.teacher_card.edit_lesson',
+                                              ),
+                                            ),
+                                          );
 
-                                              label: const Text(
-                                                'استراتيجية جديدة',
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: OutlinedButton.icon(
-                                              onPressed: _editLesson,
-                                              icon: const Icon(
-                                                Icons.edit_outlined,
-                                              ),
-                                              label: const Text('تعديل الدرس'),
-                                            ),
-                                          ),
-                                        ],
+                                          if (isNarrow) {
+                                            return Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: [
+                                                addBtn,
+                                                const SizedBox(height: 8),
+                                                editBtn,
+                                              ],
+                                            );
+                                          }
+
+                                          return Row(
+                                            children: [
+                                              Expanded(child: addBtn),
+                                              const SizedBox(width: 8),
+                                              Expanded(child: editBtn),
+                                            ],
+                                          );
+                                        },
                                       ),
                                     ],
                                   ),
@@ -578,7 +599,7 @@ class _LessonViewPageState extends State<LessonViewPage> {
                                       quickActions: [
                                         _QuickAction(
                                           icon: Icons.visibility_outlined,
-                                          tooltip: 'عرض',
+                                          tooltip: strings.tr('lesson_view.quick.view'),
                                           onTap: () => openLessonStrategy(
                                             context,
                                             widget.user,
@@ -587,17 +608,17 @@ class _LessonViewPageState extends State<LessonViewPage> {
                                         ),
                                         _QuickAction(
                                           icon: Icons.gesture_outlined,
-                                          tooltip: 'تعديل بصري',
+                                          tooltip: strings.tr('lesson_view.quick.visual_edit'),
                                           onTap: () => _editStrategyVisual(s),
                                         ),
                                         _QuickAction(
                                           icon: Icons.auto_fix_high_outlined,
-                                          tooltip: 'إعادة توليد',
+                                          tooltip: strings.tr('lesson_view.quick.regenerate'),
                                           onTap: () => _editStrategy(s),
                                         ),
                                         _QuickAction(
                                           icon: Icons.delete_outline,
-                                          tooltip: 'حذف',
+                                          tooltip: strings.tr('lesson_view.quick.delete'),
                                           onTap: () => _deleteStrategy(s),
                                         ),
                                       ],
@@ -617,8 +638,7 @@ class _LessonViewPageState extends State<LessonViewPage> {
                   ),
                 ],
               ),
-            ),
-    );
+            );
   }
 }
 
@@ -721,6 +741,7 @@ class _TeacherStrategyTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final strings = AppStrings.of(context);
     return Material(
       color: cs.surface,
       borderRadius: BorderRadius.circular(18),
@@ -803,7 +824,7 @@ class _TeacherStrategyTile extends StatelessWidget {
                         child: PopupMenuButton<String>(
                           tooltip: strings.tr('lesson_view.more'),
                           onSelected: (v) => onMoreActions!(v),
-                          itemBuilder: (context) => const [
+                          itemBuilder: (context) => [
                             PopupMenuItem(
                               value: 'json',
                               child: Text(strings.tr('lesson_view.edit_json')),

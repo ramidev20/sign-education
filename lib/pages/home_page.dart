@@ -308,7 +308,7 @@ class _HomePageState extends State<HomePage> {
             _buildSectionTitle(context, strings.adSpace),
             const SizedBox(height: 10),
             SizedBox(
-              height: 132,
+              height: 152,
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 scrollDirection: Axis.horizontal,
@@ -396,6 +396,12 @@ class _HomePageState extends State<HomePage> {
               },
               icon: const Icon(Icons.open_in_new_rounded, size: 16),
               label: Text(strings.adDetails),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                minimumSize: const Size(0, 32),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              ),
             ),
           ),
         ],

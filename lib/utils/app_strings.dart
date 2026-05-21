@@ -23,6 +23,11 @@ class AppStrings {
     return AppStrings(localeProvider.locale.languageCode);
   }
 
+  static AppStrings read(BuildContext context) {
+    final localeProvider = context.read<LocaleProvider>();
+    return AppStrings(localeProvider.locale.languageCode);
+  }
+
   String _t(String ar, String en, String fr) {
     if (isArabic) return ar;
     if (isFrench) return fr;

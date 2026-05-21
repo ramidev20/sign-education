@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_lesson_strategies.dart';
 import 'package:sign_education/data/models/lesson_strategy_model.dart';
+import 'package:sign_education/utils/app_strings.dart';
 
 class SixHatEditorPage extends StatefulWidget {
   final LessonStrategyModel strategy;
@@ -15,16 +16,16 @@ class _SixHatEditorPageState extends State<SixHatEditorPage> {
   late Map<String, TextEditingController> _controllers;
 
   static const _hats = <_HatDef>[
-    _HatDef(keyName: 'white_hat', label: 'القبعة البيضاء', color: Colors.white),
-    _HatDef(keyName: 'red_hat', label: 'القبعة الحمراء', color: Colors.red),
-    _HatDef(keyName: 'black_hat', label: 'القبعة السوداء', color: Colors.black),
+    _HatDef(keyName: 'white_hat', labelKey: 'strategy_visual.six_hat.white', color: Colors.white),
+    _HatDef(keyName: 'red_hat', labelKey: 'strategy_visual.six_hat.red', color: Colors.red),
+    _HatDef(keyName: 'black_hat', labelKey: 'strategy_visual.six_hat.black', color: Colors.black),
     _HatDef(
       keyName: 'yellow_hat',
-      label: 'القبعة الصفراء',
+      labelKey: 'strategy_visual.six_hat.yellow',
       color: Colors.yellow,
     ),
-    _HatDef(keyName: 'green_hat', label: 'القبعة الخضراء', color: Colors.green),
-    _HatDef(keyName: 'blue_hat', label: 'القبعة الزرقاء', color: Colors.blue),
+    _HatDef(keyName: 'green_hat', labelKey: 'strategy_visual.six_hat.green', color: Colors.green),
+    _HatDef(keyName: 'blue_hat', labelKey: 'strategy_visual.six_hat.blue', color: Colors.blue),
   ];
 
   @override
@@ -46,6 +47,7 @@ class _SixHatEditorPageState extends State<SixHatEditorPage> {
   }
 
   Future<void> _save() async {
+    final strings = AppStrings.read(context);
     setState(() => _saving = true);
     try {
       final payload = <String, dynamic>{
@@ -60,7 +62,7 @@ class _SixHatEditorPageState extends State<SixHatEditorPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ: $e')),
+        SnackBar(content: Text('${strings.tr('strategy_visual.error')}: $e')),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -71,15 +73,16 @@ class _SixHatEditorPageState extends State<SixHatEditorPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final strings = AppStrings.of(context);
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: strings.isArabic ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('محرّر القبعات الست'),
+          title: Text(strings.tr('strategy_visual.six_hat.title')),
           centerTitle: true,
           actions: [
             IconButton(
-              tooltip: 'حفظ',
+              tooltip: strings.tr('strategy_visual.save'),
               onPressed: _saving ? null : _save,
               icon: _saving
                   ? const SizedBox(
@@ -97,6 +100,7 @@ class _SixHatEditorPageState extends State<SixHatEditorPage> {
           separatorBuilder: (_, __) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
             final hat = _hats[index];
+            final label = strings.tr(hat.labelKey);
             final isDark = ThemeData.estimateBrightnessForColor(hat.color) ==
                 Brightness.dark;
             final fg = isDark ? Colors.white : Colors.black;
@@ -116,7 +120,7 @@ class _SixHatEditorPageState extends State<SixHatEditorPage> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            hat.label,
+                            label,
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w800,
                             ),
@@ -129,7 +133,9 @@ class _SixHatEditorPageState extends State<SixHatEditorPage> {
                       controller: _controllers[hat.keyName],
                       maxLines: 6,
                       decoration: InputDecoration(
-                        hintText: 'اكتب محتوى ${hat.label}',
+                        hintText: strings
+                            .tr('strategy_visual.six_hat.hint')
+                            .replaceAll('{hat}', label),
                         border: const OutlineInputBorder(),
                         filled: true,
                         fillColor: cs.surfaceContainerHighest.withOpacity(0.4),
@@ -148,12 +154,11 @@ class _SixHatEditorPageState extends State<SixHatEditorPage> {
 
 class _HatDef {
   final String keyName;
-  final String label;
+  final String labelKey;
   final Color color;
   const _HatDef({
     required this.keyName,
-    required this.label,
+    required this.labelKey,
     required this.color,
   });
 }
-

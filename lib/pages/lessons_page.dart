@@ -9,6 +9,7 @@ import 'package:sign_education/pages/lesson_create_page.dart';
 import 'package:sign_education/pages/lesson_strategies_info_page.dart';
 import 'package:sign_education/pages/lesson_view_page.dart';
 import 'package:sign_education/utils/app_strings.dart';
+import 'package:sign_education/utils/subject_localization.dart';
 import 'package:sign_education/utils/app_theme.dart';
 import 'package:sign_education/utils/offline_lesson_cache.dart';
 import 'package:sign_education/widgets/app_state.dart';
@@ -169,9 +170,10 @@ class _LessonsPageState extends State<LessonsPage> {
     }
 
     if (_selectedStudentSubject == null) {
-      final subjects = _allStudentSubjects(_lessons);
+      final strings = AppStrings.of(context);
+      final subjects = _allStudentSubjects(strings, _lessons);
       final grid = _LessonsSubjectsGrid(
-        title: AppStrings.of(context).tr('lessons.choose_subject'),
+        title: strings.tr('lessons.choose_subject'),
         subjects: subjects,
         onTap: (subjectId) {
           setState(() => _selectedStudentSubject = subjectId);
@@ -464,7 +466,7 @@ class _TeacherLessonsArchiveState extends State<_TeacherLessonsArchive> {
           }
 
           if (_selectedSubject == null) {
-            final subjects = _buildSubjectsFromLessons(lessons);
+            final subjects = _buildSubjectsFromLessons(strings, lessons);
             return _withOfflineBanner(
               result,
               _LessonsSubjectsGrid(
@@ -589,7 +591,7 @@ class _LessonsBySubjectList extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                _subjectLabel(subjectId),
+                _subjectLabel(strings, subjectId),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
             ],
@@ -612,7 +614,7 @@ class _LessonsBySubjectList extends StatelessWidget {
                         leading: const Icon(Icons.menu_book_outlined),
                         title: Text(lesson.title ?? strings.tr('lessons.lesson_fallback_title')),
                         subtitle: Text(
-                          '${strings.tr('lessons.subject_label')}: ${_subjectLabel(lesson.subject)}',
+                          '${strings.tr('lessons.subject_label')}: ${_subjectLabel(strings, lesson.subject)}',
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -770,7 +772,10 @@ class _SubjectUiItem {
   });
 }
 
-List<_SubjectUiItem> _buildSubjectsFromLessons(List<LessonModel> lessons) {
+List<_SubjectUiItem> _buildSubjectsFromLessons(
+  AppStrings strings,
+  List<LessonModel> lessons,
+) {
   final ids = <String>{};
   for (final lesson in lessons) {
     if (lesson.subject.trim().isNotEmpty) {
@@ -778,17 +783,20 @@ List<_SubjectUiItem> _buildSubjectsFromLessons(List<LessonModel> lessons) {
     }
   }
 
-  final subjects = ids.map((id) => _subjectUi(id)).toList();
+  final subjects = ids.map((id) => _subjectUi(strings, id)).toList();
   subjects.sort((a, b) => a.title.compareTo(b.title));
   return subjects;
 }
 
-List<_SubjectUiItem> _allStudentSubjects(List<LessonModel> lessons) {
+List<_SubjectUiItem> _allStudentSubjects(
+  AppStrings strings,
+  List<LessonModel> lessons,
+) {
   final all = <_SubjectUiItem>[
     for (final s in dictionarySubjects)
       _SubjectUiItem(
         id: s.id,
-        title: s.titleAr,
+        title: strings.tr(s.titleKey),
         icon: s.icon,
         color: s.color,
       ),
@@ -798,18 +806,18 @@ List<_SubjectUiItem> _allStudentSubjects(List<LessonModel> lessons) {
   for (final lesson in lessons) {
     final id = lesson.subject.trim();
     if (id.isEmpty || existingIds.contains(id)) continue;
-    all.add(_subjectUi(id));
+    all.add(_subjectUi(strings, id));
     existingIds.add(id);
   }
   return all;
 }
 
-_SubjectUiItem _subjectUi(String id) {
+_SubjectUiItem _subjectUi(AppStrings strings, String id) {
   for (final ds in dictionarySubjects) {
     if (ds.id != id) continue;
     return _SubjectUiItem(
       id: id,
-      title: ds.titleAr,
+      title: strings.tr(ds.titleKey),
       icon: ds.icon,
       color: ds.color,
     );
@@ -826,12 +834,12 @@ _SubjectUiItem _subjectUi(String id) {
   final index = id.codeUnits.fold<int>(0, (p, n) => p + n) % colors.length;
   return _SubjectUiItem(
     id: id,
-    title: _subjectLabel(id),
+    title: _subjectLabel(strings, id),
     icon: Icons.menu_book_rounded,
     color: colors[index],
   );
 }
 
-String _subjectLabel(String subjectId) {
-  return subjectLabels[subjectId] ?? subjectId;
+String _subjectLabel(AppStrings strings, String subjectId) {
+  return localizedSubject(strings, subjectId);
 }

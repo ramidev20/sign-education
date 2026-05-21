@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_lesson_strategies.dart';
 import 'package:sign_education/data/models/lesson_strategy_model.dart';
+import 'package:sign_education/utils/app_strings.dart';
 
 class HierarchyEditorPage extends StatefulWidget {
   final LessonStrategyModel strategy;
@@ -21,13 +22,14 @@ class _HierarchyEditorPageState extends State<HierarchyEditorPage> {
     final json = widget.strategy.contentJson;
     _title = (json['title']?.toString().trim().isNotEmpty ?? false)
         ? json['title'].toString()
-        : 'التدرج الهرمي';
+        : '';
     _items = (json['hierarchyMap'] as List? ?? const [])
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
   }
 
   Future<void> _editItem(int index) async {
+    final strings = AppStrings.read(context);
     final item = _items[index];
     final title = TextEditingController(text: item['title']?.toString() ?? '');
     final desc =
@@ -36,25 +38,25 @@ class _HierarchyEditorPageState extends State<HierarchyEditorPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('تعديل المستوى'),
+        title: Text(strings.tr('strategy_visual.hierarchy.edit_level')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: title,
-              decoration: const InputDecoration(
-                labelText: 'العنوان',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: strings.tr('strategy_visual.title'),
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: desc,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'الوصف',
+              decoration: InputDecoration(
+                labelText: strings.tr('strategy_visual.description'),
                 alignLabelWithHint: true,
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
             ),
           ],
@@ -62,11 +64,11 @@ class _HierarchyEditorPageState extends State<HierarchyEditorPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text(strings.tr('strategy_visual.cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('حفظ'),
+            child: Text(strings.tr('strategy_visual.save')),
           ),
         ],
       ),
@@ -80,10 +82,11 @@ class _HierarchyEditorPageState extends State<HierarchyEditorPage> {
   }
 
   void _add() {
+    final strings = AppStrings.read(context);
     setState(() {
       _items.add({
         'level': _items.length + 1,
-        'title': 'مستوى جديد',
+        'title': strings.tr('strategy_visual.hierarchy.new_level'),
         'description': '',
       });
     });
@@ -94,15 +97,18 @@ class _HierarchyEditorPageState extends State<HierarchyEditorPage> {
   }
 
   Future<void> _save() async {
+    final strings = AppStrings.read(context);
     setState(() => _saving = true);
     try {
+      final titleToSave =
+          _title.trim().isEmpty ? strings.tr('strategy.hierarchy') : _title.trim();
       for (var i = 0; i < _items.length; i++) {
         _items[i]['level'] = i + 1;
       }
       await DbHelperLessonStrategies.updateStrategy(
         lessonStrategyId: widget.strategy.lessonStrategyId,
         contentJson: {
-          'title': _title,
+          'title': titleToSave,
           'hierarchyMap': _items,
         },
       );
@@ -111,7 +117,7 @@ class _HierarchyEditorPageState extends State<HierarchyEditorPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر الحفظ: $e')),
+        SnackBar(content: Text('${strings.tr('strategy_visual.save_failed')}: $e')),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -120,20 +126,23 @@ class _HierarchyEditorPageState extends State<HierarchyEditorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final displayTitle =
+        _title.trim().isEmpty ? strings.tr('strategy.hierarchy') : _title;
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: strings.isArabic ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('محرّر التدرج الهرمي'),
+          title: Text(strings.tr('strategy_visual.hierarchy.title')),
           centerTitle: true,
           actions: [
             IconButton(
-              tooltip: 'إضافة',
+              tooltip: strings.tr('strategy_visual.add'),
               onPressed: _saving ? null : _add,
               icon: const Icon(Icons.add),
             ),
             IconButton(
-              tooltip: 'حفظ',
+              tooltip: strings.tr('strategy_visual.save'),
               onPressed: _saving ? null : _save,
               icon: _saving
                   ? const SizedBox(
@@ -150,11 +159,11 @@ class _HierarchyEditorPageState extends State<HierarchyEditorPage> {
             Padding(
               padding: const EdgeInsets.all(12),
               child: TextField(
-                controller: TextEditingController(text: _title),
+                controller: TextEditingController(text: displayTitle),
                 onChanged: (v) => _title = v,
-                decoration: const InputDecoration(
-                  labelText: 'العنوان',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: strings.tr('strategy_visual.title'),
+                  border: const OutlineInputBorder(),
                 ),
               ),
             ),
@@ -187,12 +196,12 @@ class _HierarchyEditorPageState extends State<HierarchyEditorPage> {
                         spacing: 4,
                         children: [
                           IconButton(
-                            tooltip: 'تعديل',
+                            tooltip: strings.tr('strategy_visual.edit'),
                             onPressed: () => _editItem(index),
                             icon: const Icon(Icons.edit_outlined),
                           ),
                           IconButton(
-                            tooltip: 'حذف',
+                            tooltip: strings.tr('strategy_visual.delete'),
                             onPressed: () => _remove(index),
                             icon: const Icon(Icons.delete_outline),
                           ),
@@ -211,4 +220,3 @@ class _HierarchyEditorPageState extends State<HierarchyEditorPage> {
     );
   }
 }
-

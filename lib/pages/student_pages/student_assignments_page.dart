@@ -549,64 +549,92 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
         padding: const EdgeInsets.all(16),
         itemCount: filtered.length + 1,
         itemBuilder: (context, index) {
-          if (index == 0) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _deliveredSubjectFilter,
-                      decoration: InputDecoration(
-                        labelText: strings.text('المادة', 'Subject', 'Matiere'),
-                        isDense: true,
-                      ),
-                      items: [
-                        DropdownMenuItem(
-                          value: 'all',
-                          child: Text(strings.text('الكل', 'All', 'Tous')),
-                        ),
-                        ...subjects.map(
-                          (subject) => DropdownMenuItem(
-                            value: subject,
-                            child: Text(_subjectLabel(strings, subject)),
-                          ),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _deliveredSubjectFilter = value);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _deliveredSortKey,
-                      decoration: InputDecoration(
-                        labelText: strings.text('الترتيب', 'Sort', 'Tri'),
-                        isDense: true,
-                      ),
-                      items: [
-                        DropdownMenuItem(
-                          value: 'date_desc',
-                          child: Text(strings.text('الأحدث', 'Newest', 'Plus recent')),
-                        ),
-                        DropdownMenuItem(
-                          value: 'date_asc',
-                          child: Text(strings.text('الأقدم', 'Oldest', 'Plus ancien')),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _deliveredSortKey = value);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
+           if (index == 0) {
+             return Padding(
+               padding: const EdgeInsets.only(bottom: 12),
+               child: LayoutBuilder(
+                 builder: (context, constraints) {
+                   final isNarrow = constraints.maxWidth < 520;
+
+                   final subject = DropdownButtonFormField<String>(
+                     value: _deliveredSubjectFilter,
+                     decoration: InputDecoration(
+                       labelText: strings.text('المادة', 'Subject', 'Matiere'),
+                       isDense: true,
+                       contentPadding: const EdgeInsets.symmetric(
+                         horizontal: 12,
+                         vertical: 10,
+                       ),
+                     ),
+                     items: [
+                       DropdownMenuItem(
+                         value: 'all',
+                         child: Text(strings.text('الكل', 'All', 'Tous')),
+                       ),
+                       ...subjects.map(
+                         (subject) => DropdownMenuItem(
+                           value: subject,
+                           child: Text(_subjectLabel(strings, subject)),
+                         ),
+                       ),
+                     ],
+                     onChanged: (value) {
+                       if (value == null) return;
+                       setState(() => _deliveredSubjectFilter = value);
+                     },
+                   );
+
+                   final sort = DropdownButtonFormField<String>(
+                     value: _deliveredSortKey,
+                     decoration: InputDecoration(
+                       labelText: strings.text('الترتيب', 'Sort', 'Tri'),
+                       isDense: true,
+                       contentPadding: const EdgeInsets.symmetric(
+                         horizontal: 12,
+                         vertical: 10,
+                       ),
+                     ),
+                     items: [
+                       DropdownMenuItem(
+                         value: 'date_desc',
+                         child: Text(
+                           strings.text('الأحدث', 'Newest', 'Plus recent'),
+                         ),
+                       ),
+                       DropdownMenuItem(
+                         value: 'date_asc',
+                         child: Text(
+                           strings.text('الأقدم', 'Oldest', 'Plus ancien'),
+                         ),
+                       ),
+                     ],
+                     onChanged: (value) {
+                       if (value == null) return;
+                       setState(() => _deliveredSortKey = value);
+                     },
+                   );
+
+                   if (isNarrow) {
+                     return Column(
+                       children: [
+                         subject,
+                         const SizedBox(height: 10),
+                         sort,
+                       ],
+                     );
+                   }
+
+                   return Row(
+                     children: [
+                       Expanded(child: subject),
+                       const SizedBox(width: 12),
+                       Expanded(child: sort),
+                     ],
+                   );
+                 },
+               ),
+             );
+           }
 
           final deliveredItem = filtered[index - 1];
           final assignment = deliveredItem.assignment;

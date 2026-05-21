@@ -58,7 +58,7 @@ class _StrategyJsonEditorPageState extends State<StrategyJsonEditorPage> {
   }
 
   Future<void> _save() async {
-    final strings = AppStrings.of(context);
+    final strings = AppStrings.read(context);
     final raw = _controller.text.trim();
     if (raw.isEmpty) return;
 
@@ -100,7 +100,7 @@ class _StrategyJsonEditorPageState extends State<StrategyJsonEditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    final strings = AppStrings.of(context);
+    final strings = AppStrings.read(context);
     final title = (widget.strategy.title?.trim().isNotEmpty ?? false)
         ? widget.strategy.title!.trim()
         : strategyLabelForType(context, widget.strategy.strategyType);
@@ -148,10 +148,10 @@ class _StrategyJsonEditorPageState extends State<StrategyJsonEditorPage> {
                 maxLines: null,
                 minLines: null,
                 textAlignVertical: TextAlignVertical.top,
-                decoration: const InputDecoration(
-                  labelText: 'Strategy JSON',
+                decoration: InputDecoration(
+                  labelText: strings.tr('strategy_json.label'),
                   alignLabelWithHint: true,
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
                 ),
               ),
             ),

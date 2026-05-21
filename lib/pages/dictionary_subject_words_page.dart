@@ -11,13 +11,13 @@ import 'package:video_thumbnail/video_thumbnail.dart';
 
 class DictionarySubjectWordsPage extends StatefulWidget {
   final String subjectId;
-  final String subjectTitleAr;
+  final String subjectTitle;
   final Color subjectColor;
 
   const DictionarySubjectWordsPage({
     super.key,
     required this.subjectId,
-    required this.subjectTitleAr,
+    required this.subjectTitle,
     required this.subjectColor,
   });
 
@@ -91,7 +91,7 @@ class _DictionarySubjectWordsPageState extends State<DictionarySubjectWordsPage>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.subjectTitleAr),
+        title: Text(widget.subjectTitle),
         centerTitle: true,
       ),
       body: _isLoading

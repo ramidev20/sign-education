@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_lesson_strategies.dart';
 import 'package:sign_education/data/models/lesson_strategy_model.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:uuid/uuid.dart';
 
 class TimelineEditorPage extends StatefulWidget {
@@ -23,7 +24,7 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
     _titleController = TextEditingController(
       text: (json['content']?.toString().trim().isNotEmpty ?? false)
           ? json['content'].toString()
-          : 'الخط الزمني',
+          : '',
     );
 
     _events = _extractEvents(json);
@@ -69,11 +70,12 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
   }
 
   void _add() {
+    final strings = AppStrings.read(context);
     setState(() {
       _events.add({
         'id': const Uuid().v4(),
-        'date': 'YYYY/MM/DD',
-        'content': 'حدث جديد',
+        'date': strings.tr('strategy_visual.timeline.date_placeholder'),
+        'content': strings.tr('strategy_visual.timeline.new_event'),
         'nodes': <dynamic>[],
       });
     });
@@ -84,6 +86,7 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
   }
 
   Future<void> _editEvent(int index) async {
+    final strings = AppStrings.read(context);
     final e = _events[index];
     final date = TextEditingController(text: e['date']?.toString() ?? '');
     final content = TextEditingController(text: e['content']?.toString() ?? '');
@@ -91,25 +94,25 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('تعديل الحدث'),
+        title: Text(strings.tr('strategy_visual.timeline.edit_event')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: date,
-              decoration: const InputDecoration(
-                labelText: 'التاريخ',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: strings.tr('strategy_visual.timeline.date'),
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: content,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'الحدث',
+              decoration: InputDecoration(
+                labelText: strings.tr('strategy_visual.timeline.event'),
                 alignLabelWithHint: true,
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
             ),
           ],
@@ -117,11 +120,11 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text(strings.tr('strategy_visual.cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('حفظ'),
+            child: Text(strings.tr('strategy_visual.save')),
           ),
         ],
       ),
@@ -167,6 +170,7 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
   }
 
   Future<void> _save() async {
+    final strings = AppStrings.read(context);
     setState(() => _saving = true);
     try {
       await DbHelperLessonStrategies.updateStrategy(
@@ -174,7 +178,7 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
         contentJson: {
           'id': 'root',
           'content': _titleController.text.trim().isEmpty
-              ? 'الخط الزمني'
+              ? strings.tr('strategy.timeline')
               : _titleController.text.trim(),
           'nodes': _events,
         },
@@ -184,7 +188,7 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر الحفظ: $e')),
+        SnackBar(content: Text('${strings.tr('strategy_visual.save_failed')}: $e')),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -193,25 +197,26 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: strings.isArabic ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('محرّر الخط الزمني'),
+          title: Text(strings.tr('strategy_visual.timeline.title')),
           centerTitle: true,
           actions: [
             IconButton(
-              tooltip: 'ترتيب حسب التاريخ',
+              tooltip: strings.tr('strategy_visual.timeline.sort_by_date'),
               onPressed: _saving ? null : _sortByDate,
               icon: const Icon(Icons.sort),
             ),
             IconButton(
-              tooltip: 'إضافة',
+              tooltip: strings.tr('strategy_visual.add'),
               onPressed: _saving ? null : _add,
               icon: const Icon(Icons.add),
             ),
             IconButton(
-              tooltip: 'حفظ',
+              tooltip: strings.tr('strategy_visual.save'),
               onPressed: _saving ? null : _save,
               icon: _saving
                   ? const SizedBox(
@@ -229,9 +234,9 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
               padding: const EdgeInsets.all(12),
               child: TextField(
                 controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'عنوان الخط الزمني',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: strings.tr('strategy_visual.timeline.title_label'),
+                  border: const OutlineInputBorder(),
                 ),
               ),
             ),
@@ -258,12 +263,12 @@ class _TimelineEditorPageState extends State<TimelineEditorPage> {
                         spacing: 4,
                         children: [
                           IconButton(
-                            tooltip: 'تعديل',
+                            tooltip: strings.tr('strategy_visual.edit'),
                             onPressed: () => _editEvent(index),
                             icon: const Icon(Icons.edit_outlined),
                           ),
                           IconButton(
-                            tooltip: 'حذف',
+                            tooltip: strings.tr('strategy_visual.delete'),
                             onPressed: () => _remove(index),
                             icon: const Icon(Icons.delete_outline),
                           ),

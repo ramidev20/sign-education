@@ -2,6 +2,7 @@ import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_lesson_strategies.dart';
 import 'package:sign_education/data/models/lesson_strategy_model.dart';
+import 'package:sign_education/utils/app_strings.dart';
 import 'package:sign_education/utils/app_theme.dart';
 
 class TriangleEditorPage extends StatefulWidget {
@@ -71,6 +72,7 @@ class _TriangleEditorPageState extends State<TriangleEditorPage> {
   }
 
   Future<void> _editCorner(int index) async {
+    final strings = AppStrings.read(context);
     final c = _triangleMap[index];
     final corner = TextEditingController(text: c['corner']?.toString() ?? '');
     final title = TextEditingController(text: c['title']?.toString() ?? '');
@@ -118,27 +120,27 @@ class _TriangleEditorPageState extends State<TriangleEditorPage> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: corner,
-                          decoration: const InputDecoration(
-                            labelText: 'اسم الزاوية',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: strings.tr('strategy_visual.triangle.angle_name'),
+                            border: const OutlineInputBorder(),
                           ),
                         ),
                         const SizedBox(height: 10),
                         TextField(
                           controller: title,
-                          decoration: const InputDecoration(
-                            labelText: 'العنوان',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: strings.tr('strategy_visual.title'),
+                            border: const OutlineInputBorder(),
                           ),
                         ),
                         const SizedBox(height: 10),
                         TextField(
                           controller: desc,
                           maxLines: 4,
-                          decoration: const InputDecoration(
-                            labelText: 'الوصف',
+                          decoration: InputDecoration(
+                            labelText: strings.tr('strategy_visual.description'),
                             alignLabelWithHint: true,
-                            border: OutlineInputBorder(),
+                            border: const OutlineInputBorder(),
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -197,14 +199,18 @@ class _TriangleEditorPageState extends State<TriangleEditorPage> {
                                     ),
                                     const Spacer(),
                                     IconButton(
-                                      tooltip: 'إضافة مثال',
+                                      tooltip: strings.tr('strategy_visual.triangle.add_example'),
                                       onPressed: () async {
                                         final controller =
                                             TextEditingController();
                                         final v = await showDialog<String>(
                                           context: context,
                                           builder: (context) => AlertDialog(
-                                            title: const Text('إضافة مثال'),
+                                            title: Text(
+                                              strings.tr(
+                                                'strategy_visual.triangle.add_example_title',
+                                              ),
+                                            ),
                                             content: TextField(
                                               controller: controller,
                                               decoration: const InputDecoration(
@@ -215,14 +221,18 @@ class _TriangleEditorPageState extends State<TriangleEditorPage> {
                                               TextButton(
                                                 onPressed: () =>
                                                     Navigator.pop(context),
-                                                child: const Text('إلغاء'),
+                                                child: Text(
+                                                  strings.tr('strategy_visual.cancel'),
+                                                ),
                                               ),
                                               FilledButton(
                                                 onPressed: () => Navigator.pop(
                                                   context,
                                                   controller.text.trim(),
                                                 ),
-                                                child: const Text('إضافة'),
+                                                child: Text(
+                                                  strings.tr('strategy_visual.add'),
+                                                ),
                                               ),
                                             ],
                                           ),
@@ -238,7 +248,9 @@ class _TriangleEditorPageState extends State<TriangleEditorPage> {
                                 ),
                                 const SizedBox(height: 8),
                                 if (examples.isEmpty)
-                                  const Text('لا توجد أمثلة بعد.')
+                                  Text(
+                                    strings.tr('strategy_visual.triangle.no_examples_yet'),
+                                  )
                                 else
                                   Wrap(
                                     spacing: 8,
@@ -312,7 +324,11 @@ class _TriangleEditorPageState extends State<TriangleEditorPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ: $e')),
+        SnackBar(
+          content: Text(
+            '${AppStrings.read(context).tr('strategy_visual.error')}: $e',
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -322,20 +338,21 @@ class _TriangleEditorPageState extends State<TriangleEditorPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final strings = AppStrings.of(context);
 
     final c0 = _parseColor(_triangleMap[0]['color']?.toString() ?? '#3b82f6');
     final c1 = _parseColor(_triangleMap[1]['color']?.toString() ?? '#3b82f6');
     final c2 = _parseColor(_triangleMap[2]['color']?.toString() ?? '#3b82f6');
 
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: strings.isArabic ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('محرر المثلث التعليمي'),
+          title: Text(strings.tr('strategy_visual.triangle.title')),
           centerTitle: true,
           actions: [
             IconButton(
-              tooltip: 'حفظ',
+              tooltip: strings.tr('strategy_visual.save'),
               onPressed: _saving ? null : _save,
               icon: _saving
                   ? const SizedBox(
@@ -354,19 +371,19 @@ class _TriangleEditorPageState extends State<TriangleEditorPage> {
             children: [
               TextField(
                 controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'العنوان',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: strings.tr('strategy_visual.title'),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _descriptionController,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'الوصف (اختياري)',
+                decoration: InputDecoration(
+                  labelText: strings.tr('strategy_visual.triangle.optional_description'),
                   alignLabelWithHint: true,
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
@@ -403,8 +420,8 @@ class _TriangleEditorPageState extends State<TriangleEditorPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'اضغط على أي زاوية لتعديلها (الاسم، العنوان، الوصف، الأمثلة، واللون).',
+              Text(
+                strings.tr('strategy_visual.triangle.help'),
                 textAlign: TextAlign.center,
               ),
             ],

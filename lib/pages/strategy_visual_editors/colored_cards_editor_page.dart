@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_lesson_strategies.dart';
 import 'package:sign_education/data/models/lesson_strategy_model.dart';
+import 'package:sign_education/utils/app_strings.dart';
 
 class ColoredCardsEditorPage extends StatefulWidget {
   final LessonStrategyModel strategy;
@@ -21,7 +22,7 @@ class _ColoredCardsEditorPageState extends State<ColoredCardsEditorPage> {
     final json = widget.strategy.contentJson;
     _title = (json['title']?.toString().trim().isNotEmpty ?? false)
         ? json['title'].toString()
-        : 'البطاقات الملونة';
+        : '';
 
     _cards = (json['conceptCards'] as List? ?? const [])
         .map((e) => Map<String, dynamic>.from(e as Map))
@@ -29,10 +30,11 @@ class _ColoredCardsEditorPageState extends State<ColoredCardsEditorPage> {
   }
 
   void _add() {
+    final strings = AppStrings.read(context);
     setState(() {
       _cards.add({
-        'title': 'بطاقة جديدة',
-        'type': 'مفهوم',
+        'title': strings.tr('strategy_visual.colored_cards.new_card'),
+        'type': strings.tr('strategy_visual.colored_cards.default_type'),
         'content': '',
         'color': '#60A5FA',
       });
@@ -42,6 +44,7 @@ class _ColoredCardsEditorPageState extends State<ColoredCardsEditorPage> {
   void _remove(int index) => setState(() => _cards.removeAt(index));
 
   Future<void> _edit(int index) async {
+    final strings = AppStrings.read(context);
     final c = _cards[index];
     final title = TextEditingController(text: c['title']?.toString() ?? '');
     final type = TextEditingController(text: c['type']?.toString() ?? '');
@@ -51,42 +54,42 @@ class _ColoredCardsEditorPageState extends State<ColoredCardsEditorPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('تعديل البطاقة'),
+        title: Text(strings.tr('strategy_visual.colored_cards.edit_card')),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: title,
-                decoration: const InputDecoration(
-                  labelText: 'العنوان',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: strings.tr('strategy_visual.title'),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: type,
-                decoration: const InputDecoration(
-                  labelText: 'النوع',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: strings.tr('strategy_visual.colored_cards.type'),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: color,
-                decoration: const InputDecoration(
-                  labelText: 'اللون (HEX مثل #60A5FA)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: strings.tr('strategy_visual.colored_cards.color_hex'),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: content,
                 maxLines: 5,
-                decoration: const InputDecoration(
-                  labelText: 'المحتوى',
+                decoration: InputDecoration(
+                  labelText: strings.tr('strategy_visual.colored_cards.content'),
                   alignLabelWithHint: true,
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
                 ),
               ),
             ],
@@ -95,11 +98,11 @@ class _ColoredCardsEditorPageState extends State<ColoredCardsEditorPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text(strings.tr('strategy_visual.cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('حفظ'),
+            child: Text(strings.tr('strategy_visual.save')),
           ),
         ],
       ),
@@ -115,12 +118,16 @@ class _ColoredCardsEditorPageState extends State<ColoredCardsEditorPage> {
   }
 
   Future<void> _save() async {
+    final strings = AppStrings.read(context);
     setState(() => _saving = true);
     try {
+      final titleToSave = _title.trim().isEmpty
+          ? strings.tr('strategy.colored_cards')
+          : _title.trim();
       await DbHelperLessonStrategies.updateStrategy(
         lessonStrategyId: widget.strategy.lessonStrategyId,
         contentJson: {
-          'title': _title,
+          'title': titleToSave,
           'conceptCards': _cards,
         },
       );
@@ -129,7 +136,7 @@ class _ColoredCardsEditorPageState extends State<ColoredCardsEditorPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر الحفظ: $e')),
+        SnackBar(content: Text('${strings.tr('strategy_visual.save_failed')}: $e')),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -138,20 +145,23 @@ class _ColoredCardsEditorPageState extends State<ColoredCardsEditorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final displayTitle =
+        _title.trim().isEmpty ? strings.tr('strategy.colored_cards') : _title;
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: strings.isArabic ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('محرّر البطاقات الملونة'),
+          title: Text(strings.tr('strategy_visual.colored_cards.title')),
           centerTitle: true,
           actions: [
             IconButton(
-              tooltip: 'إضافة',
+              tooltip: strings.tr('strategy_visual.add'),
               onPressed: _saving ? null : _add,
               icon: const Icon(Icons.add),
             ),
             IconButton(
-              tooltip: 'حفظ',
+              tooltip: strings.tr('strategy_visual.save'),
               onPressed: _saving ? null : _save,
               icon: _saving
                   ? const SizedBox(
@@ -168,11 +178,11 @@ class _ColoredCardsEditorPageState extends State<ColoredCardsEditorPage> {
             Padding(
               padding: const EdgeInsets.all(12),
               child: TextField(
-                controller: TextEditingController(text: _title),
+                controller: TextEditingController(text: displayTitle),
                 onChanged: (v) => _title = v,
-                decoration: const InputDecoration(
-                  labelText: 'العنوان',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: strings.tr('strategy_visual.title'),
+                  border: const OutlineInputBorder(),
                 ),
               ),
             ),
@@ -199,12 +209,12 @@ class _ColoredCardsEditorPageState extends State<ColoredCardsEditorPage> {
                         spacing: 4,
                         children: [
                           IconButton(
-                            tooltip: 'تعديل',
+                            tooltip: strings.tr('strategy_visual.edit'),
                             onPressed: () => _edit(index),
                             icon: const Icon(Icons.edit_outlined),
                           ),
                           IconButton(
-                            tooltip: 'حذف',
+                            tooltip: strings.tr('strategy_visual.delete'),
                             onPressed: () => _remove(index),
                             icon: const Icon(Icons.delete_outline),
                           ),
@@ -223,4 +233,3 @@ class _ColoredCardsEditorPageState extends State<ColoredCardsEditorPage> {
     );
   }
 }
-

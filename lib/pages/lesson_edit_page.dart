@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_lessons.dart';
 import 'package:sign_education/data/models/lesson_model.dart';
 import 'package:sign_education/utils/app_strings.dart';
+import 'package:sign_education/utils/subject_localization.dart';
 
 class LessonEditPage extends StatefulWidget {
   final LessonModel lesson;
@@ -113,7 +114,7 @@ class _LessonEditPageState extends State<LessonEditPage> {
                     .map(
                       (id) => DropdownMenuItem(
                         value: id,
-                        child: Text(strings.tr('subject.$id')),
+                        child: Text(localizedSubject(strings, id)),
                       ),
                     )
                     .toList(),

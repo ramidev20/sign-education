@@ -4,6 +4,7 @@ import 'package:sign_education/data/models/lesson_model.dart';
 import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/pages/lesson_view_page.dart';
 import 'package:sign_education/utils/app_strings.dart';
+import 'package:sign_education/utils/subject_localization.dart';
 import 'package:sign_education/widgets/app_state.dart';
 
 class TeacherLessonStrategiesPage extends StatelessWidget {
@@ -49,7 +50,7 @@ class TeacherLessonStrategiesPage extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final lesson = lessons[index];
-              final subjectText = strings.tr('subject.${lesson.subject}');
+              final subjectText = localizedSubject(strings, lesson.subject);
 
               return Card(
                 child: ListTile(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_lesson_strategies.dart';
 import 'package:sign_education/data/models/lesson_strategy_model.dart';
+import 'package:sign_education/utils/app_strings.dart';
 
 class JournalisticQuestionsEditorPage extends StatefulWidget {
   final LessonStrategyModel strategy;
@@ -18,6 +19,12 @@ class _JournalisticQuestionsEditorPageState
 
   static const _types = <String>['what', 'when', 'where', 'why', 'how', 'who'];
 
+  String _typeLabel(AppStrings strings, String type) {
+    final key = 'strategy_visual.journalistic.type.$type';
+    final label = strings.tr(key);
+    return label == key ? type : label;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -34,6 +41,7 @@ class _JournalisticQuestionsEditorPageState
   }
 
   Future<void> _save() async {
+    final strings = AppStrings.read(context);
     setState(() => _saving = true);
     try {
       await DbHelperLessonStrategies.updateStrategy(
@@ -46,13 +54,16 @@ class _JournalisticQuestionsEditorPageState
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('حدث خطأ: $e')));
+      ).showSnackBar(
+        SnackBar(content: Text('${strings.tr('strategy_visual.error')}: $e')),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
   Future<void> _editItem(int index) async {
+    final strings = AppStrings.read(context);
     final item = _items[index];
     final q = TextEditingController(text: item['question']?.toString() ?? '');
     final a = TextEditingController(text: item['answer']?.toString() ?? '');
@@ -77,7 +88,7 @@ class _JournalisticQuestionsEditorPageState
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'تعديل السؤال',
+                      strings.tr('strategy_visual.journalistic.edit_question'),
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
@@ -86,13 +97,16 @@ class _JournalisticQuestionsEditorPageState
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: _types.contains(type) ? type : _types.first,
-                      decoration: const InputDecoration(
-                        labelText: 'النوع',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: strings.tr('strategy_visual.journalistic.type'),
+                        border: const OutlineInputBorder(),
                       ),
                       items: _types
                           .map(
-                            (t) => DropdownMenuItem(value: t, child: Text(t)),
+                            (t) => DropdownMenuItem(
+                              value: t,
+                              child: Text(_typeLabel(strings, t)),
+                            ),
                           )
                           .toList(),
                       onChanged: (v) => setLocal(() => type = v ?? 'what'),
@@ -100,19 +114,19 @@ class _JournalisticQuestionsEditorPageState
                     const SizedBox(height: 10),
                     TextField(
                       controller: q,
-                      decoration: const InputDecoration(
-                        labelText: 'السؤال',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: strings.tr('strategy_visual.journalistic.question'),
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 10),
                     TextField(
                       controller: a,
                       maxLines: 5,
-                      decoration: const InputDecoration(
-                        labelText: 'الإجابة',
+                      decoration: InputDecoration(
+                        labelText: strings.tr('strategy_visual.journalistic.answer'),
                         alignLabelWithHint: true,
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -121,14 +135,14 @@ class _JournalisticQuestionsEditorPageState
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () => Navigator.pop(context, false),
-                            child: const Text('إلغاء'),
+                            child: Text(strings.tr('strategy_visual.cancel')),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: FilledButton(
                             onPressed: () => Navigator.pop(context, true),
-                            child: const Text('حفظ'),
+                            child: Text(strings.tr('strategy_visual.save')),
                           ),
                         ),
                       ],
@@ -151,15 +165,16 @@ class _JournalisticQuestionsEditorPageState
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: strings.isArabic ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('محرّر الأسئلة الصحفية'),
+          title: Text(strings.tr('strategy_visual.journalistic.title')),
           centerTitle: true,
           actions: [
             IconButton(
-              tooltip: 'إضافة',
+              tooltip: strings.tr('strategy_visual.add'),
               onPressed: _saving
                   ? null
                   : () => setState(
@@ -172,7 +187,7 @@ class _JournalisticQuestionsEditorPageState
               icon: const Icon(Icons.add_rounded),
             ),
             IconButton(
-              tooltip: 'حفظ',
+              tooltip: strings.tr('strategy_visual.save'),
               onPressed: _saving ? null : _save,
               icon: _saving
                   ? const SizedBox(
@@ -198,22 +213,29 @@ class _JournalisticQuestionsEditorPageState
             final item = _items[index];
             final q = item['question']?.toString() ?? '';
             final t = item['type']?.toString() ?? '';
+            final tLabel = _typeLabel(strings, t);
             return Card(
               key: ValueKey('jq-$index-$t-$q'),
               child: ListTile(
                 leading: const Icon(Icons.quiz_outlined),
-                title: Text(q.isEmpty ? 'سؤال جديد' : q),
-                subtitle: Text('النوع: $t'),
+                title: Text(
+                  q.isEmpty ? strings.tr('strategy_visual.journalistic.new_question') : q,
+                ),
+                subtitle: Text(
+                  strings
+                      .tr('strategy_visual.journalistic.type_prefix')
+                      .replaceAll('{t}', tLabel),
+                ),
                 trailing: Wrap(
                   spacing: 4,
                   children: [
                     IconButton(
-                      tooltip: 'تعديل',
+                      tooltip: strings.tr('strategy_visual.edit'),
                       onPressed: () => _editItem(index),
                       icon: const Icon(Icons.edit_outlined),
                     ),
                     IconButton(
-                      tooltip: 'حذف',
+                      tooltip: strings.tr('strategy_visual.delete'),
                       onPressed: _items.length <= 1
                           ? null
                           : () => setState(() => _items.removeAt(index)),

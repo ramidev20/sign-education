@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_lesson_strategies.dart';
 import 'package:sign_education/data/models/lesson_strategy_model.dart';
+import 'package:sign_education/utils/app_strings.dart';
 
 class ComparisonTableEditorPage extends StatefulWidget {
   final LessonStrategyModel strategy;
@@ -23,7 +24,7 @@ class _ComparisonTableEditorPageState extends State<ComparisonTableEditorPage> {
     final json = widget.strategy.contentJson;
     _title = (json['title']?.toString().trim().isNotEmpty ?? false)
         ? json['title'].toString()
-        : 'جدول المقارنة';
+        : '';
 
     _table = (json['comparisonTable'] as List? ?? const [])
         .map((e) => Map<String, dynamic>.from(e as Map))
@@ -40,31 +41,32 @@ class _ComparisonTableEditorPageState extends State<ComparisonTableEditorPage> {
     }
     _options = options.toList();
     if (_options.isEmpty) {
-      _options = ['الخيار 1', 'الخيار 2'];
+      _options = [];
     }
   }
 
   void _addOption() async {
+    final strings = AppStrings.read(context);
     final c = TextEditingController();
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('إضافة عمود'),
+        title: Text(strings.tr('strategy_visual.comparison.add_column')),
         content: TextField(
           controller: c,
-          decoration: const InputDecoration(
-            labelText: 'اسم العمود',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: strings.tr('strategy_visual.comparison.column_name'),
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
+            child: Text(strings.tr('strategy_visual.cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, c.text.trim()),
-            child: const Text('إضافة'),
+            child: Text(strings.tr('strategy_visual.add')),
           ),
         ],
       ),
@@ -86,9 +88,18 @@ class _ComparisonTableEditorPageState extends State<ComparisonTableEditorPage> {
   }
 
   void _addCriterion() {
+    final strings = AppStrings.read(context);
+    if (_options.isEmpty) {
+      _options = [
+        strings.tr('strategy_visual.comparison.default_option_1'),
+        strings.tr('strategy_visual.comparison.default_option_2'),
+      ];
+    }
     setState(() {
       _table.add({
-        'معيار جديد': {for (final o in _options) o: ''},
+        strings.tr('strategy_visual.comparison.new_criterion'): {
+          for (final o in _options) o: ''
+        },
       });
     });
   }
@@ -100,13 +111,19 @@ class _ComparisonTableEditorPageState extends State<ComparisonTableEditorPage> {
     required String criterion,
     required String option,
   }) async {
+    final strings = AppStrings.read(context);
     final values = (_table[rowIndex][criterion] as Map?)?.cast<String, dynamic>() ??
         <String, dynamic>{};
     final c = TextEditingController(text: values[option]?.toString() ?? '');
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('تعديل: $criterion / $option'),
+        title: Text(
+          strings
+              .tr('strategy_visual.comparison.edit_cell_title')
+              .replaceAll('{criterion}', criterion)
+              .replaceAll('{option}', option),
+        ),
         content: TextField(
           controller: c,
           maxLines: 5,
@@ -115,11 +132,11 @@ class _ComparisonTableEditorPageState extends State<ComparisonTableEditorPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
+            child: Text(strings.tr('strategy_visual.cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, c.text.trim()),
-            child: const Text('حفظ'),
+            child: Text(strings.tr('strategy_visual.save')),
           ),
         ],
       ),
@@ -132,6 +149,7 @@ class _ComparisonTableEditorPageState extends State<ComparisonTableEditorPage> {
   }
 
   Future<void> _renameCriterion(int index) async {
+    final strings = AppStrings.read(context);
     final row = _table[index];
     if (row.keys.isEmpty) return;
     final old = row.keys.first.toString();
@@ -139,7 +157,7 @@ class _ComparisonTableEditorPageState extends State<ComparisonTableEditorPage> {
     final next = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('تعديل المعيار'),
+        title: Text(strings.tr('strategy_visual.comparison.edit_criterion')),
         content: TextField(
           controller: c,
           decoration: const InputDecoration(border: OutlineInputBorder()),
@@ -147,11 +165,11 @@ class _ComparisonTableEditorPageState extends State<ComparisonTableEditorPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
+            child: Text(strings.tr('strategy_visual.cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, c.text.trim()),
-            child: const Text('حفظ'),
+            child: Text(strings.tr('strategy_visual.save')),
           ),
         ],
       ),
@@ -164,8 +182,12 @@ class _ComparisonTableEditorPageState extends State<ComparisonTableEditorPage> {
   }
 
   Future<void> _save() async {
+    final strings = AppStrings.read(context);
     setState(() => _saving = true);
     try {
+      final titleToSave = _title.trim().isEmpty
+          ? strings.tr('strategy.comparison_table')
+          : _title.trim();
       // Ensure each row contains all options
       for (final row in _table) {
         if (row.keys.isEmpty) continue;
@@ -181,7 +203,7 @@ class _ComparisonTableEditorPageState extends State<ComparisonTableEditorPage> {
       await DbHelperLessonStrategies.updateStrategy(
         lessonStrategyId: widget.strategy.lessonStrategyId,
         contentJson: {
-          'title': _title,
+          'title': titleToSave,
           'comparisonTable': _table,
         },
       );
@@ -190,7 +212,7 @@ class _ComparisonTableEditorPageState extends State<ComparisonTableEditorPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر الحفظ: $e')),
+        SnackBar(content: Text('${strings.tr('strategy_visual.save_failed')}: $e')),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -199,25 +221,28 @@ class _ComparisonTableEditorPageState extends State<ComparisonTableEditorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final displayTitle =
+        _title.trim().isEmpty ? strings.tr('strategy.comparison_table') : _title;
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: strings.isArabic ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('محرّر جدول المقارنة'),
+          title: Text(strings.tr('strategy_visual.comparison.title')),
           centerTitle: true,
           actions: [
             IconButton(
-              tooltip: 'إضافة معيار',
+              tooltip: strings.tr('strategy_visual.comparison.add_criterion'),
               onPressed: _saving ? null : _addCriterion,
               icon: const Icon(Icons.add_rounded),
             ),
             IconButton(
-              tooltip: 'إضافة عمود',
+              tooltip: strings.tr('strategy_visual.comparison.add_column'),
               onPressed: _saving ? null : _addOption,
               icon: const Icon(Icons.view_column_rounded),
             ),
             IconButton(
-              tooltip: 'حفظ',
+              tooltip: strings.tr('strategy_visual.save'),
               onPressed: _saving ? null : _save,
               icon: _saving
                   ? const SizedBox(
@@ -234,11 +259,11 @@ class _ComparisonTableEditorPageState extends State<ComparisonTableEditorPage> {
             Padding(
               padding: const EdgeInsets.all(12),
               child: TextField(
-                controller: TextEditingController(text: _title),
+                controller: TextEditingController(text: displayTitle),
                 onChanged: (v) => _title = v,
-                decoration: const InputDecoration(
-                  labelText: 'العنوان',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: strings.tr('strategy_visual.title'),
+                  border: const OutlineInputBorder(),
                 ),
               ),
             ),
@@ -283,17 +308,23 @@ class _ComparisonTableEditorPageState extends State<ComparisonTableEditorPage> {
                     key: ValueKey('cmp-$index-$criterion'),
                     child: ExpansionTile(
                       title: Text(criterion),
-                      subtitle: const Text('اضغط لتعديل الخلايا'),
+                      subtitle: Text(
+                        strings.tr('strategy_visual.comparison.tap_to_edit_cells'),
+                      ),
                       trailing: Wrap(
                         spacing: 4,
                         children: [
                           IconButton(
-                            tooltip: 'تعديل المعيار',
+                            tooltip: strings.tr(
+                              'strategy_visual.comparison.edit_criterion_tooltip',
+                            ),
                             onPressed: () => _renameCriterion(index),
                             icon: const Icon(Icons.edit_outlined),
                           ),
                           IconButton(
-                            tooltip: 'حذف المعيار',
+                            tooltip: strings.tr(
+                              'strategy_visual.comparison.delete_criterion_tooltip',
+                            ),
                             onPressed: () => _removeCriterion(index),
                             icon: const Icon(Icons.delete_outline),
                           ),
@@ -324,4 +355,3 @@ class _ComparisonTableEditorPageState extends State<ComparisonTableEditorPage> {
     );
   }
 }
-

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sign_education/data/db/db_helper_lesson_strategies.dart';
 import 'package:sign_education/data/models/lesson_strategy_model.dart';
+import 'package:sign_education/utils/app_strings.dart';
 
 class EducationalStoryEditorPage extends StatefulWidget {
   final LessonStrategyModel strategy;
@@ -51,6 +52,7 @@ class _EducationalStoryEditorPageState extends State<EducationalStoryEditorPage>
   }
 
   Future<void> _save() async {
+    final strings = AppStrings.read(context);
     setState(() => _saving = true);
     try {
       final payload = {
@@ -71,7 +73,7 @@ class _EducationalStoryEditorPageState extends State<EducationalStoryEditorPage>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ: $e')),
+        SnackBar(content: Text('${strings.tr('strategy_visual.error')}: $e')),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -79,11 +81,12 @@ class _EducationalStoryEditorPageState extends State<EducationalStoryEditorPage>
   }
 
   Future<void> _addCharacter() async {
+    final strings = AppStrings.read(context);
     final c = TextEditingController();
     final v = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('إضافة شخصية'),
+        title: Text(strings.tr('strategy_visual.story.add_character_title')),
         content: TextField(
           controller: c,
           decoration: const InputDecoration(border: OutlineInputBorder()),
@@ -91,11 +94,11 @@ class _EducationalStoryEditorPageState extends State<EducationalStoryEditorPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
+            child: Text(strings.tr('strategy_visual.cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, c.text.trim()),
-            child: const Text('إضافة'),
+            child: Text(strings.tr('strategy_visual.add')),
           ),
         ],
       ),
@@ -110,15 +113,16 @@ class _EducationalStoryEditorPageState extends State<EducationalStoryEditorPage>
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: strings.isArabic ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('محرّر القصة التعليمية'),
+          title: Text(strings.tr('strategy_visual.story.title')),
           centerTitle: true,
           actions: [
             IconButton(
-              tooltip: 'حفظ',
+              tooltip: strings.tr('strategy_visual.save'),
               onPressed: _saving ? null : _save,
               icon: _saving
                   ? const SizedBox(
@@ -137,17 +141,17 @@ class _EducationalStoryEditorPageState extends State<EducationalStoryEditorPage>
             children: [
               TextField(
                 controller: _title,
-                decoration: const InputDecoration(
-                  labelText: 'عنوان القصة',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: strings.tr('strategy_visual.story.story_title'),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: _setting,
-                decoration: const InputDecoration(
-                  labelText: 'المكان/الزمان',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: strings.tr('strategy_visual.story.place_time'),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 10),
@@ -165,7 +169,7 @@ class _EducationalStoryEditorPageState extends State<EducationalStoryEditorPage>
                           ),
                           const Spacer(),
                           IconButton(
-                            tooltip: 'إضافة',
+                            tooltip: strings.tr('strategy_visual.add'),
                             onPressed: _saving ? null : _addCharacter,
                             icon: const Icon(Icons.add_rounded),
                           ),
@@ -173,7 +177,7 @@ class _EducationalStoryEditorPageState extends State<EducationalStoryEditorPage>
                       ),
                       const SizedBox(height: 8),
                       if (_characters.isEmpty)
-                        const Text('لا توجد شخصيات بعد.')
+                        Text(strings.tr('strategy_visual.story.no_characters_yet'))
                       else
                         Wrap(
                           spacing: 8,
@@ -206,7 +210,7 @@ class _EducationalStoryEditorPageState extends State<EducationalStoryEditorPage>
                           ),
                           const Spacer(),
                           IconButton(
-                            tooltip: 'إضافة فقرة',
+                            tooltip: strings.tr('strategy_visual.story.add_paragraph'),
                             onPressed: _saving ? null : _addPlot,
                             icon: const Icon(Icons.add_rounded),
                           ),
@@ -232,14 +236,16 @@ class _EducationalStoryEditorPageState extends State<EducationalStoryEditorPage>
                               enabled: !_saving,
                               onChanged: (v) => _plot[index] = v,
                               decoration: InputDecoration(
-                                labelText: 'فقرة ${index + 1}',
+                                labelText: strings
+                                    .tr('strategy_visual.story.paragraph_n')
+                                    .replaceAll('{n}', '${index + 1}'),
                                 border: const OutlineInputBorder(),
                               ),
                               maxLines: 3,
                               initialValue: _plot[index],
                             ),
                             trailing: IconButton(
-                              tooltip: 'حذف',
+                              tooltip: strings.tr('strategy_visual.delete'),
                               onPressed: _saving || _plot.length <= 1
                                   ? null
                                   : () => setState(() => _plot.removeAt(index)),
@@ -256,10 +262,10 @@ class _EducationalStoryEditorPageState extends State<EducationalStoryEditorPage>
               TextField(
                 controller: _moral,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'العبرة',
+                decoration: InputDecoration(
+                  labelText: strings.tr('strategy_visual.story.moral'),
                   alignLabelWithHint: true,
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
                 ),
               ),
             ],

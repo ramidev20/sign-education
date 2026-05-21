@@ -138,78 +138,100 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              value: _subjectFilter,
-              decoration: InputDecoration(
-                labelText: strings.text('المادة', 'Subject', 'Matiere'),
-                isDense: true,
-              ),
-              items: [
-                DropdownMenuItem(
-                  value: 'all',
-                  child: Text(strings.text('الكل', 'All', 'Tous')),
-                ),
-                ...allSubjects.map(
-                  (s) => DropdownMenuItem(
-                    value: s,
-                    child: Text(_subjectLabel(strings, s)),
-                  ),
-                ),
-              ],
-              onChanged: (v) {
-                if (v == null) return;
-                setState(() => _subjectFilter = v);
-              },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 520;
+
+          final subject = DropdownButtonFormField<String>(
+            value: _subjectFilter,
+            decoration: InputDecoration(
+              labelText: strings.text('المادة', 'Subject', 'Matiere'),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              value: _sortKey,
-              decoration: InputDecoration(
-                labelText: strings.text('الترتيب', 'Sort', 'Tri'),
-                isDense: true,
+            items: [
+              DropdownMenuItem(
+                value: 'all',
+                child: Text(strings.text('الكل', 'All', 'Tous')),
               ),
-              items: [
-                DropdownMenuItem(
-                  value: 'due_desc',
-                  child: Text(
-                    strings.text(
-                      'الأقرب موعدا',
-                      'Nearest due date',
-                      'Echeance la plus proche',
-                    ),
-                  ),
+              ...allSubjects.map(
+                (s) => DropdownMenuItem(
+                  value: s,
+                  child: Text(_subjectLabel(strings, s)),
                 ),
-                DropdownMenuItem(
-                  value: 'due_asc',
-                  child: Text(
-                    strings.text(
-                      'الأبعد موعدا',
-                      'Latest due date',
-                      'Echeance la plus lointaine',
-                    ),
-                  ),
-                ),
-                DropdownMenuItem(
-                  value: 'created_desc',
-                  child: Text(strings.text('الأحدث إضافة', 'Newest first', 'Plus recent')),
-                ),
-                DropdownMenuItem(
-                  value: 'created_asc',
-                  child: Text(strings.text('الأقدم إضافة', 'Oldest first', 'Plus ancien')),
-                ),
-              ],
-              onChanged: (v) {
-                if (v == null) return;
-                setState(() => _sortKey = v);
-              },
+              ),
+            ],
+            onChanged: (v) {
+              if (v == null) return;
+              setState(() => _subjectFilter = v);
+            },
+          );
+
+          final sort = DropdownButtonFormField<String>(
+            value: _sortKey,
+            decoration: InputDecoration(
+              labelText: strings.text('الترتيب', 'Sort', 'Tri'),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
-          ),
-        ],
+            items: [
+              DropdownMenuItem(
+                value: 'due_desc',
+                child: Text(
+                  strings.text(
+                    'الأقرب موعدا',
+                    'Nearest due date',
+                    'Echeance la plus proche',
+                  ),
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'due_asc',
+                child: Text(
+                  strings.text(
+                    'الأبعد موعدا',
+                    'Latest due date',
+                    'Echeance la plus lointaine',
+                  ),
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'created_desc',
+                child: Text(
+                  strings.text('الأحدث إضافة', 'Newest first', 'Plus recent'),
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'created_asc',
+                child: Text(
+                  strings.text('الأقدم إضافة', 'Oldest first', 'Plus ancien'),
+                ),
+              ),
+            ],
+            onChanged: (v) {
+              if (v == null) return;
+              setState(() => _sortKey = v);
+            },
+          );
+
+          if (isNarrow) {
+            return Column(
+              children: [
+                subject,
+                const SizedBox(height: 10),
+                sort,
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: subject),
+              const SizedBox(width: 12),
+              Expanded(child: sort),
+            ],
+          );
+        },
       ),
     );
   }
