@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
@@ -9,6 +9,10 @@ class NotificationService {
 
   static Future<void> init({Function(String?)? onNotificationTap}) async {
     _onNotificationTap = onNotificationTap;
+
+    if (kIsWeb) {
+      return;
+    }
 
     const AndroidInitializationSettings androidInit =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -27,7 +31,7 @@ class NotificationService {
       },
     );
 
-    if (Platform.isAndroid) {
+    if (defaultTargetPlatform == TargetPlatform.android) {
       final androidImpl = _notificationsPlugin
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
@@ -42,6 +46,10 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
+    if (kIsWeb) {
+      return;
+    }
+
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
           'main_channel',
@@ -60,6 +68,9 @@ class NotificationService {
   }
 
   static Future<void> clearAll() async {
+    if (kIsWeb) {
+      return;
+    }
     await _notificationsPlugin.cancelAll();
   }
 }

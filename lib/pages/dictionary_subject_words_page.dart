@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
@@ -41,6 +42,15 @@ class _DictionarySubjectWordsPageState extends State<DictionarySubjectWordsPage>
   }
 
   Future<void> _initThumbnails() async {
+    if (kIsWeb) {
+      if (!mounted) return;
+      setState(() {
+        _thumbnails = const {};
+        _isLoading = false;
+      });
+      return;
+    }
+
     final thumbs = <String, Uint8List?>{};
     final words = _subjectWords;
 

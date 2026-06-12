@@ -6,8 +6,8 @@ import 'package:sign_education/data/labels_data.dart';
 import 'package:sign_education/data/models/lesson_model.dart';
 import 'package:sign_education/data/models/user_model.dart';
 import 'package:sign_education/pages/lesson_create_page.dart';
-import 'package:sign_education/pages/lesson_strategies_info_page.dart';
 import 'package:sign_education/pages/lesson_view_page.dart';
+import 'package:sign_education/pages/teacher_lesson_strategies_page.dart';
 import 'package:sign_education/utils/app_strings.dart';
 import 'package:sign_education/utils/subject_localization.dart';
 import 'package:sign_education/utils/app_theme.dart';
@@ -241,18 +241,22 @@ class _LessonsPageState extends State<LessonsPage> {
         },
       ),
       _TeacherTile(
-        title: strings.tr('lessons.teacher.strategy_guide'),
-        icon: Icons.auto_awesome_outlined,
-        gradient: LinearGradient(
-          colors: [theme.colorScheme.primary, theme.colorScheme.secondary],
+        title: strings.tr('lessons.teacher.create_strategy'),
+        icon: Icons.library_add_rounded,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF2563EB), Color(0xFF60A5FA)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        onTap: () {
-          Navigator.push(
+        onTap: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => LessonStrategiesInfoPage(user: widget.user),
+              builder: (_) => TeacherLessonStrategiesPage(user: widget.user),
             ),
           );
+          if (!mounted) return;
+          setState(() {});
         },
       ),
     ];

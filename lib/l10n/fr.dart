@@ -24,6 +24,7 @@ const Map<String, String> fr = {
   'lessons.choose_subject': 'Choisir la matiere',
   'lessons.teacher.add_lesson': 'Ajouter une lecon',
   'lessons.teacher.archive': 'Archive des lecons',
+  'lessons.teacher.create_strategy': 'Creer une strategie',
   'lessons.teacher.strategy_guide': "Strategies d'apprentissage",
   'lessons.student.no_group.title': "Vous n'etes inscrit dans aucun groupe",
   'lessons.student.no_group.message':
@@ -73,6 +74,16 @@ const Map<String, String> fr = {
   'teacher_lesson_strategies.empty.title': 'Aucune lecon pour le moment',
   'teacher_lesson_strategies.empty.message':
       'Ajoutez une lecon, puis creez ses strategies.',
+  'teacher_lesson_strategies.subtitle':
+      'Choisissez une lecon, selectionnez une carte de strategie, puis generez-la a partir du texte enregistre.',
+  'teacher_lesson_strategies.lesson_label': 'Lecon',
+  'teacher_lesson_strategies.success': 'Strategie creee avec succes',
+  'teacher_lesson_strategies.validation.lesson_pick':
+      'Veuillez choisir une lecon',
+  'teacher_lesson_strategies.validation.strategy_pick':
+      'Veuillez choisir une carte de strategie',
+  'teacher_lesson_strategies.validation.lesson_text':
+      "Cette lecon n'a pas de texte pour la generation",
 
   'strategy_guide.title': 'Guide des strategies',
 

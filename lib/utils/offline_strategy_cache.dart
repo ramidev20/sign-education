@@ -41,6 +41,7 @@ class OfflineStrategyCache {
     required String lessonId,
     required List<LessonStrategyModel> strategies,
   }) async {
+    if (kIsWeb) return;
     try {
       final file = await strategiesFile(lessonId);
       final payload = jsonEncode(
@@ -53,6 +54,7 @@ class OfflineStrategyCache {
   }
 
   static Future<List<LessonStrategyModel>> readStrategies(String lessonId) async {
+    if (kIsWeb) return const [];
     try {
       final file = await strategiesFile(lessonId);
       if (!await file.exists()) return const [];
@@ -70,6 +72,7 @@ class OfflineStrategyCache {
   }
 
   static Future<void> clear(String lessonId) async {
+    if (kIsWeb) return;
     try {
       final file = await strategiesFile(lessonId);
       if (await file.exists()) await file.delete();
@@ -78,4 +81,3 @@ class OfflineStrategyCache {
     }
   }
 }
-

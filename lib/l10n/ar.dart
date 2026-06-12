@@ -245,6 +245,17 @@ const Map<String, String> ar = {
   'lesson_view.strategy_delete.title': 'حذف الاستراتيجية؟',
   'lesson_view.strategy_delete.warning': 'سيتم حذفها ولن تظهر للطلاب.',
   'lesson_view.strategy_delete.action': 'حذف',
+  'lessons.teacher.create_strategy': 'إنشاء استراتيجية',
+  'teacher_lesson_strategies.subtitle':
+      'اختر درساً، حدد بطاقة الاستراتيجية، ثم أنشئها من نص الدرس المحفوظ.',
+  'teacher_lesson_strategies.lesson_label': 'الدرس',
+  'teacher_lesson_strategies.success': 'تم إنشاء الاستراتيجية بنجاح',
+  'teacher_lesson_strategies.validation.lesson_pick':
+      'الرجاء اختيار درس',
+  'teacher_lesson_strategies.validation.strategy_pick':
+      'الرجاء اختيار بطاقة استراتيجية',
+  'teacher_lesson_strategies.validation.lesson_text':
+      'هذا الدرس لا يحتوي على نص للإنشاء',
 
   'subject.math': 'رياضيات',
   'subject.physics': 'فيزياء',

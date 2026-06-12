@@ -24,6 +24,7 @@ const Map<String, String> en = {
   'lessons.choose_subject': 'Choose a subject',
   'lessons.teacher.add_lesson': 'Add lesson',
   'lessons.teacher.archive': 'Lessons archive',
+  'lessons.teacher.create_strategy': 'Create strategy',
   'lessons.teacher.strategy_guide': 'Learning strategies',
   'lessons.student.no_group.title': 'You are not enrolled in any group yet',
   'lessons.student.no_group.message': 'Ask your teacher to add you to a group.',
@@ -69,6 +70,15 @@ const Map<String, String> en = {
   'teacher_lesson_strategies.empty.title': 'No lessons yet',
   'teacher_lesson_strategies.empty.message':
       'Add a lesson, then create strategies for it.',
+  'teacher_lesson_strategies.subtitle':
+      'Choose a lesson, pick a strategy card, then generate it from the saved lesson text.',
+  'teacher_lesson_strategies.lesson_label': 'Lesson',
+  'teacher_lesson_strategies.success': 'Strategy created successfully',
+  'teacher_lesson_strategies.validation.lesson_pick': 'Please choose a lesson',
+  'teacher_lesson_strategies.validation.strategy_pick':
+      'Please choose a strategy card',
+  'teacher_lesson_strategies.validation.lesson_text':
+      'This lesson has no text to generate from',
 
   'strategy_guide.title': 'Strategies guide',
 

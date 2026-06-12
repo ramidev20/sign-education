@@ -57,3 +57,8 @@ app.*.map.json
 /_keys_*.txt
 /_tr_keys_used*.txt
 /_missing_in_en.txt
+
+# Local API / secret files
+api.txt
+api.local.txt
+*.local.txt
