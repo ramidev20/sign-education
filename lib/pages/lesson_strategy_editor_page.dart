@@ -85,7 +85,7 @@ class _LessonStrategyEditorPageState extends State<LessonStrategyEditorPage> {
   }
 
   Future<void> _submit() async {
-    final strings = AppStrings.of(context);
+    final strings = AppStrings.read(context);
 
     if (!_formKey.currentState!.validate()) return;
     final type = _strategyType;
